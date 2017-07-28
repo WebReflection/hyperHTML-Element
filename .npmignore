@@ -3,5 +3,6 @@ node_modules/*
 .babelrc
 .gitignore
 .travis.yml
+index.html
 test.js
 package-lock.json

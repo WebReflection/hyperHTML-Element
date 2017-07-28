@@ -35,83 +35,99 @@ var _fixBabelExtend = function (O) {
   };
 }(Object);
 
-/*! (C) 2017 Andrea Giammarchi - ISC Style License */
-hyperHTML.Element = _fixBabelExtend(function (_HTMLElement) {
-  _inherits(HyperHTMLElement, _HTMLElement);
+var HyperHTMLElement = function (defineProperty) {
+  /*! (C) 2017 Andrea Giammarchi - ISC Style License */
+  return _fixBabelExtend(function (_HTMLElement) {
+    _inherits(HyperHTMLElement, _HTMLElement);
 
-  function HyperHTMLElement() {
-    _classCallCheck(this, HyperHTMLElement);
+    function HyperHTMLElement() {
+      _classCallCheck(this, HyperHTMLElement);
 
-    return _possibleConstructorReturn(this, (HyperHTMLElement.__proto__ || Object.getPrototypeOf(HyperHTMLElement)).apply(this, arguments));
-  }
-
-  _createClass(HyperHTMLElement, [{
-    key: 'html',
-
-
-    // lazily bind once hyperHTML logic
-    // to either the shadowRoot, if present and open,
-    // or the custom-element itself
-    get: function get() {
-      return this.html = hyperHTML.bind(this.shadowRoot || this);
+      return _possibleConstructorReturn(this, (HyperHTMLElement.__proto__ || Object.getPrototypeOf(HyperHTMLElement)).apply(this, arguments));
     }
-  }], [{
-    key: 'define',
+
+    _createClass(HyperHTMLElement, [{
+      key: 'html',
 
 
-    // define a custom-element in the CustomElementsRegistry
-    value: function define(name) {
-      var Class = this;
-      var proto = Class.prototype;
-      (Class.observedAttributes || []).forEach(function (name) {
-        if (name in proto) return;
-        Object.defineProperty(proto, name.replace(/-([a-z])/g, function ($0, $1) {
-          return $1.toUpperCase();
-        }), {
+      // lazily bind once hyperHTML logic
+      // to either the shadowRoot, if present and open,
+      // or the custom-element itself
+      get: function get() {
+        return defineProperty(this, 'html', {
           configurable: true,
-          get: function get() {
-            return this.getAttribute(name);
-          },
-          set: function set(value) {
-            this.setAttribute(name, value);
-          }
-        });
-      });
-      if ('ready' in proto) {
-        var init = true;
-        var onChanged = proto.attributeChangedCallback;
-        var hasChange = !!onChanged;
-        Object.defineProperty(proto, 'attributeChangedCallback', {
-          configurable: true,
-          value: function value() {
-            if (init) {
-              init = false;
-              this.ready();
-            }
-            if (hasChange && prev !== curr) {
-              onChanged.apply(this, arguments);
-            }
-          }
-        });
-        var onConnected = proto.connectedCallback;
-        var hasConnect = !!onConnected;
-        Object.defineProperty(proto, 'connectedCallback', {
-          configurable: true,
-          value: function value(name, prev, curr) {
-            if (init) {
-              init = false;
-              this.ready();
-            }
-            if (hasConnect) {
-              onConnected.apply(this, arguments);
-            }
-          }
-        });
+          value: hyperHTML.bind(this.shadowRoot || this)
+        }).html;
       }
-      return Class;
-    }
-  }]);
+    }], [{
+      key: 'define',
 
-  return HyperHTMLElement;
-}(HTMLElement));
+
+      // define a custom-element in the CustomElementsRegistry
+      value: function define(name) {
+        var Class = this;
+        var proto = Class.prototype;
+
+        // watch directly attributes and reflect get/setAttribute
+        (Class.observedAttributes || []).forEach(function (name) {
+          if (name in proto) return;
+          defineProperty(proto, name.replace(/-([a-z])/g, function ($0, $1) {
+            return $1.toUpperCase();
+          }), {
+            configurable: true,
+            get: function get() {
+              return this.getAttribute(name);
+            },
+            set: function set(value) {
+              this.setAttribute(name, value);
+            }
+          });
+        });
+
+        // ensure ready is triggered at the right time
+        // which is always before either attributeChangedCallback
+        // or connectedCallback
+        if ('ready' in proto) {
+          var init = true;
+          var onChanged = proto.attributeChangedCallback;
+          var hasChange = !!onChanged;
+          defineProperty(proto, 'attributeChangedCallback', {
+            configurable: true,
+            value: function value(name, prev, curr) {
+              if (init) {
+                init = false;
+                this.ready();
+              }
+              if (hasChange && prev !== curr) {
+                onChanged.apply(this, arguments);
+              }
+            }
+          });
+          var onConnected = proto.connectedCallback;
+          var hasConnect = !!onConnected;
+          defineProperty(proto, 'connectedCallback', {
+            configurable: true,
+            value: function value() {
+              if (init) {
+                init = false;
+                this.ready();
+              }
+              if (hasConnect) {
+                onConnected.apply(this, arguments);
+              }
+            }
+          });
+        }
+        customElements.define(name, Class);
+        return Class;
+      }
+    }]);
+
+    return HyperHTMLElement;
+  }(HTMLElement));
+}(Object.defineProperty);
+
+try {
+  module.exports = HyperHTMLElement;
+} catch (o_O) {}
 

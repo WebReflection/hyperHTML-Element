@@ -5,10 +5,12 @@
   "main": "index.js",
   "scripts": {
     "babel": "babel index.js > es5.js",
-    "build": "npm run babel && npm run minify && npm test && npm run size",
+    "build": "npm run babel && npm run minify && npm run minify-es5 && npm run size && npm run size-es5",
     "coveralls": "cat ./coverage/lcov.info | coveralls",
-    "minify": "uglifyjs es5.js --comments=/^!/ --compress --mangle -o min.js",
-    "size": "cat index.js | wc -c;cat min.js | wc -c;gzip -c min.js | wc -c",
+    "minify": "uglifyjs index.js --comments=/^!/ --compress --mangle -o min.js",
+    "minify-es5": "uglifyjs es5.js --comments=/^!/ --compress --mangle -o es5.min.js",
+    "size": "echo $(tput bold)'Size for ES2015'$(tput sgr0); cat index.js | wc -c;cat min.js | wc -c;gzip -c min.js | wc -c",
+    "size-es5": "echo $(tput bold)'Size for ES5'$(tput sgr0); cat es5.js | wc -c;cat es5.min.js | wc -c;gzip -c es5.min.js | wc -c",
     "test": "istanbul cover test.js"
   },
   "repository": {
