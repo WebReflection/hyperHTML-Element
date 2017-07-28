@@ -30,7 +30,7 @@ var _fixBabelExtend = function (O) {
   return function fixBabelExtend(Class) {
     var Parent = gPO(Class);
     return sPO(Class, sPO(function Super() {
-      return construct(Parent, arguments, Class);
+      return construct(Parent, arguments, gPO(this).constructor);
     }, Parent));
   };
 }(Object);

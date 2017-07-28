@@ -9,6 +9,7 @@ class MySelf extends HyperHTMLElement {
 
 MySelf.define('my-self');
 
+/*
 class MyInput extends HyperHTMLElement {
   static get observedAttributes() { return ['value']; }
   attributeChangedCallback() { this.render(); }
@@ -22,3 +23,4 @@ class MyInput extends HyperHTMLElement {
 }
 
 MyInput.define('my-input');
+*/
