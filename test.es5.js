@@ -4,7 +4,8 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
-var _templateObject = _taggedTemplateLiteral(['\n    Hi, my name is ', ' and I am ', ''], ['\n    Hi, my name is ', ' and I am ', '']);
+var _templateObject = _taggedTemplateLiteral(['\n    Hi, my name is ', ' and I am ', ''], ['\n    Hi, my name is ', ' and I am ', '']),
+    _templateObject2 = _taggedTemplateLiteral(['\n    <input value="', '" oninput="', '">'], ['\n    <input value="', '" oninput="', '">']);
 
 function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defineProperties(strings, { raw: { value: Object.freeze(raw) } })); }
 
@@ -15,9 +16,7 @@ function _possibleConstructorReturn(self, call) { if (!self) { throw new Referen
 function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
 var _fixBabelExtend = function (O) {
-  var create = O.create,
-      dP = O.defineProperty,
-      gOPD = O.getOwnPropertyDescriptor,
+  var gOPD = O.getOwnPropertyDescriptor,
       gPO = O.getPrototypeOf || function (o) {
     return o.__proto__;
   },
@@ -77,19 +76,40 @@ var MySelf = _fixBabelExtend(function (_HyperHTMLElement) {
 
 MySelf.define('my-self');
 
-/*
-class MyInput extends HyperHTMLElement {
-  static get observedAttributes() { return ['value']; }
-  attributeChangedCallback() { this.render(); }
-  handleEvent(e) {
-    this.value = e.target.value;
-    this.render();
+var MyInput = _fixBabelExtend(function (_HyperHTMLElement2) {
+  _inherits(MyInput, _HyperHTMLElement2);
+
+  function MyInput() {
+    _classCallCheck(this, MyInput);
+
+    return _possibleConstructorReturn(this, (MyInput.__proto__ || Object.getPrototypeOf(MyInput)).apply(this, arguments));
   }
-  render() { return this.html`
-    <input value="${this.value}" oninput="${this}">`;
-  }
-}
+
+  _createClass(MyInput, [{
+    key: 'attributeChangedCallback',
+    value: function attributeChangedCallback() {
+      this.render();
+    }
+  }, {
+    key: 'handleEvent',
+    value: function handleEvent(e) {
+      this.value = e.target.value;
+      this.render();
+    }
+  }, {
+    key: 'render',
+    value: function render() {
+      return this.html(_templateObject2, this.value, this);
+    }
+  }], [{
+    key: 'observedAttributes',
+    get: function get() {
+      return ['value'];
+    }
+  }]);
+
+  return MyInput;
+}(HyperHTMLElement));
 
 MyInput.define('my-input');
-*/
 

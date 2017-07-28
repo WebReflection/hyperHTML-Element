@@ -6,7 +6,7 @@
   "scripts": {
     "babel": "babel index.js > es5.js",
     "babel-test": "babel test.js > test.es5.js",
-    "build": "npm run babel && npm run minify && npm run minify-es5 && npm run size && npm run size-es5",
+    "build": "npm run babel && npm run babel-test && npm run minify && npm run minify-es5 && npm run size && npm run size-es5",
     "coveralls": "cat ./coverage/lcov.info | coveralls",
     "minify": "uglifyjs index.js --comments=/^!/ --compress --mangle -o min.js",
     "minify-es5": "uglifyjs es5.js --comments=/^!/ --compress --mangle -o es5.min.js",
