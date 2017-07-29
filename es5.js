@@ -56,7 +56,16 @@ var HyperHTMLElement = function (defineProperty) {
       get: function get() {
         return this.__hyperHTML || defineProperty(this, '__hyperHTML', {
           configurable: true,
-          value: hyperHTML.bind(this.shadowRoot || this)
+          value: hyperHTML.bind(
+          // in case of Shadow DOM {mode: "open"}, use it
+          this.shadowRoot ||
+          // in case of Shadow DOM {mode: "close"}, use it
+          // this needs the following reference created upfront
+          // this._shadowRoot = this.attachShadow({mode: "close"});
+          this._shadowRoot ||
+          // if no Shadow DOM is used, simply use the component
+          // as container for its own content (it just works too)
+          this)
         }).__hyperHTML;
       }
     }], [{
