@@ -45,7 +45,7 @@ class MyElement extends HyperHTMLElement {
 // classes must be defined through their public static method
 // this is the moment the class will be fully setup once
 // and registered to the customElements Registry.
-MyElement('my-element');
+MyElement.define('my-element');
 ```
 
 ### Compatibility
