@@ -37,7 +37,7 @@ MyElement.define('my-el');
 
 tressa.assert(customElements.get('my-el') === MyElement, '<my-el> defined in the registry');
 
-let el = new MyElement(document, 'my-el');
+let el = new MyElement();
 document.body.appendChild(el);
 
 tressa.assert(el.method.length === 3, 'all methods invoked');
@@ -70,7 +70,7 @@ class MyInput extends HyperHTMLElement {
 }
 
 MyInput.define('my-input');
-el = new MyInput(document, 'my-input');
+el = new MyInput();
 el.value = '123';
 el.value = '123';
 el.anotherValue = '456';
@@ -81,7 +81,7 @@ tressa.assert(el.outerHTML === '<my-input value="123" another-value="456"/>', 'i
 // for code coverage sake
 class MyEmptiness extends HyperHTMLElement {}
 MyEmptiness.define('my-emptyness');
-el = new MyEmptiness(document, 'my-emptyness');
+el = new MyEmptiness();
 document.body.appendChild(el);
 
 class MyAttr extends HyperHTMLElement {
@@ -94,7 +94,7 @@ class MyAttr extends HyperHTMLElement {
   attributeChangedCallback() {}
 }
 MyAttr.define('my-attr');
-el = new MyAttr(document, 'my-attr');
+el = new MyAttr();
 el.setAttribute('key', 'value');
 
 
@@ -105,7 +105,7 @@ class MyConnect extends HyperHTMLElement {
   }
 }
 MyConnect.define('my-connect');
-el = new MyConnect(document, 'my-connect');
+el = new MyConnect();
 document.body.appendChild(el);
 document.body.removeChild(el);
 document.body.appendChild(el);
@@ -117,7 +117,7 @@ class MyCreate extends HyperHTMLElement {
   }
 }
 MyCreate.define('my-create');
-el = new MyCreate(document, 'my-create');
+el = new MyCreate();
 document.body.appendChild(el);
 
 class MyAttrHack extends HyperHTMLElement {
@@ -142,7 +142,7 @@ Object.defineProperty(
   }
 );
 
-el = new MyAttrHack(document, 'my-attr-hack');
+el = new MyAttrHack();
 document.body.appendChild(el);
 el.key = 'value';
 tressa.assert(!el.counter, 'if same value, is not invoked');
@@ -161,6 +161,6 @@ class MyAttrHack2 extends HyperHTMLElement {
 
 MyAttrHack2.define('my-attr-hack2');
 
-el = new MyAttrHack2(document, 'my-attr-hack2');
+el = new MyAttrHack2();
 document.body.appendChild(el);
 el.key = 'value';
