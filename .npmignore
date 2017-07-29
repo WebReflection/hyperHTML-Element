@@ -1,9 +1,7 @@
 coverage/*
 node_modules/*
+test
 .babelrc
 .gitignore
 .travis.yml
-index.html
-test.js
-test.es5.js
 package-lock.json

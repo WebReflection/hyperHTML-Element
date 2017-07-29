@@ -54,10 +54,10 @@ var HyperHTMLElement = function (defineProperty) {
       // to either the shadowRoot, if present and open,
       // or the custom-element itself
       get: function get() {
-        return defineProperty(this, 'html', {
+        return this.__hyperHTML || defineProperty(this, '__hyperHTML', {
           configurable: true,
           value: hyperHTML.bind(this.shadowRoot || this)
-        }).html;
+        }).__hyperHTML;
       }
     }], [{
       key: 'define',
@@ -127,7 +127,9 @@ var HyperHTMLElement = function (defineProperty) {
   }(HTMLElement));
 }(Object.defineProperty);
 
+var hyperHTML;
 try {
   module.exports = HyperHTMLElement;
+  hyperHTML = require('hyperhtml');
 } catch (o_O) {}
 

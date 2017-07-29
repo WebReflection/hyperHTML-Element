@@ -66,19 +66,23 @@ const HyperHTMLElement = (defineProperty => {
       customElements.define(name, Class);
       return Class;
     }
-    
+
     // lazily bind once hyperHTML logic
     // to either the shadowRoot, if present and open,
     // or the custom-element itself
     get html() {
-      return defineProperty(this, 'html', {
+      return this.__hyperHTML || defineProperty(this, '__hyperHTML', {
         configurable: true,
         value: hyperHTML.bind(this.shadowRoot || this)
-      }).html;
+      }).__hyperHTML;
     }
 
   };
 
 })(Object.defineProperty);
 
-try { module.exports = HyperHTMLElement; } catch(o_O) {}
+var hyperHTML;
+try {
+  module.exports = HyperHTMLElement;
+  hyperHTML = require('hyperhtml');
+} catch(o_O) {}

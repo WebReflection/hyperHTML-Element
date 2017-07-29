@@ -5,9 +5,8 @@
   "main": "index.js",
   "scripts": {
     "babel": "babel index.js > es5.js",
-    "babel-test": "babel test.js > test.es5.js",
+    "babel-test": "babel test/test.js > test/test.es5.js",
     "build": "npm run babel && npm run babel-test && npm run minify && npm run minify-es5 && npm run size && npm run size-es5",
-    "coveralls": "cat ./coverage/lcov.info | coveralls",
     "minify": "uglifyjs index.js --comments=/^!/ --compress --mangle -o min.js",
     "minify-es5": "uglifyjs es5.js --comments=/^!/ --compress --mangle -o es5.min.js",
     "size": "echo $(tput bold)'Size for ES2015'$(tput sgr0); cat index.js | wc -c;cat min.js | wc -c;gzip -c min.js | wc -c",
@@ -33,11 +32,7 @@
   "devDependencies": {
     "babel-cli": "^6.24.1",
     "babel-plugin-transform-builtin-classes": "^0.3.0",
-    "babel-preset-es2015": "^6.24.1",
-    "coveralls": "^2.13.1",
-    "istanbul": "^0.4.5",
-    "tressa": "^0.3.1",
-    "uglify-es": "^3.0.26"
+    "babel-preset-es2015": "^6.24.1"
   },
   "dependencies": {
     "hyperhtml": "^0.17.1"
