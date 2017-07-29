@@ -23,8 +23,8 @@ var MySelf = function (_HyperHTMLElement) {
   }
 
   _createClass(MySelf, [{
-    key: 'ready',
-    value: function ready() {
+    key: 'created',
+    value: function created() {
       this.render();
     }
   }, {

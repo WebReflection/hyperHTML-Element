@@ -1,6 +1,7 @@
 coverage/*
 node_modules/*
-test
+test/*
+test.js
 .babelrc
 .gitignore
 .travis.yml

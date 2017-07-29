@@ -1,6 +1,6 @@
 class MySelf extends HyperHTMLElement {
   static get observedAttributes() { return ['name', 'age']; }
-  ready() { this.render(); }
+  created() { this.render(); }
   attributeChangedCallback() { this.render(); }
   render() { return this.html`
     Hi, my name is ${this.name} and I am ${this.age}`;

@@ -3,14 +3,21 @@ const HyperHTMLElement = (defineProperty => {
   return class HyperHTMLElement extends HTMLElement {
 
     // define a custom-element in the CustomElementsRegistry
+    // class MyEl extends HyperHTMLElement {}
+    // MyEl.define('my-el');
     static define(name) {
       const Class = this;
       const proto = Class.prototype;
 
-      // watch directly attributes and reflect get/setAttribute
+      // if observedAttributes contains attributes to observe
+      // HyperHTMLElement will directly reflect get/setAttribute
+      // operation once these attributes are used, example:
+      // el.observed = 123;
+      // will automatically do
+      // el.setAttribute('observed', 123);
+      // triggering also the attributeChangedCallback
       (Class.observedAttributes || []).forEach(name => {
-        if (name in proto) return;
-        defineProperty(
+        if (!(name in proto)) defineProperty(
           proto,
           name.replace(/-([a-z])/g, ($0, $1) => $1.toUpperCase()),
           {
@@ -21,13 +28,21 @@ const HyperHTMLElement = (defineProperty => {
         );
       });
 
-      // ensure ready is triggered at the right time
-      // which is always before either attributeChangedCallback
-      // or connectedCallback
-      if ('ready' in proto) {
+      const onChanged = proto.attributeChangedCallback;
+      const hasChange = !!onChanged;
+
+      // created() {} is the entry point to do whatever you want.
+      // Once the node is live and upgraded as Custom Element.
+      // This method grants to be triggered at the right time,
+      // which is always once, and right before either
+      // attributeChangedCallback or connectedCallback
+      if ('created' in proto) {
+        // used to ensure create() is called once and once only
         let init = true;
-        const onChanged = proto.attributeChangedCallback;
-        const hasChange = !!onChanged;
+
+        // ⚠️ if you need to override attributeChangedCallback method
+        //    at runtime after class definition, be sure you do so
+        //    via Object.defineProperty to preserve its non-enumerable nature.
         defineProperty(
           proto,
           'attributeChangedCallback',
@@ -36,14 +51,20 @@ const HyperHTMLElement = (defineProperty => {
             value(name, prev, curr) {
               if (init) {
                 init = false;
-                this.ready();
+                this.created();
               }
+              // ensure setting same value twice
+              // won't trigger twice attributeChangedCallback
               if (hasChange && prev !== curr) {
                 onChanged.apply(this, arguments);
               }
             }
           }
         );
+
+        // ⚠️ if you need to override attributeChangedCallback method
+        //    at runtime after class definition, be sure you do so
+        //    via Object.defineProperty to preserve its non-enumerable nature.
         const onConnected = proto.connectedCallback;
         const hasConnect = !!onConnected;
         defineProperty(
@@ -54,10 +75,28 @@ const HyperHTMLElement = (defineProperty => {
             value() {
               if (init) {
                 init = false;
-                this.ready();
+                this.created();
               }
               if (hasConnect) {
                 onConnected.apply(this, arguments);
+              }
+            }
+          }
+        );
+      } else if (hasChange) {
+        // ⚠️ if you need to override attributeChangedCallback method
+        //    at runtime after class definition, be sure you do so
+        //    via Object.defineProperty to preserve its non-enumerable nature.
+        defineProperty(
+          proto,
+          'attributeChangedCallback',
+          {
+            configurable: true,
+            value(name, prev, curr) {
+              // ensure setting same value twice
+              // won't trigger twice attributeChangedCallback
+              if (prev !== curr) {
+                onChanged.apply(this, arguments);
               }
             }
           }
@@ -69,8 +108,13 @@ const HyperHTMLElement = (defineProperty => {
 
     // lazily bind once hyperHTML logic
     // to either the shadowRoot, if present and open,
-    // or the custom-element itself
+    // the _shadowRoot property, if set due closed shadow root,
+    // or the custom-element itself if no Shadow DOM is used.
     get html() {
+      // ⚠️ defineProperty(this, 'html', {...}) would be the intent
+      //    then you have to deal with IE11 and broken ES5 implementations
+      //    where a getter in the prototype curses forever instances
+      //    properties definition.
       return this.__hyperHTML || defineProperty(this, '__hyperHTML', {
         configurable: true,
         value: hyperHTML.bind(
@@ -91,8 +135,10 @@ const HyperHTMLElement = (defineProperty => {
 
 })(Object.defineProperty);
 
-var hyperHTML;
 try {
+  // try to export HyperHTMLElement as module
   module.exports = HyperHTMLElement;
-  hyperHTML = require('hyperhtml');
+  // if possible, also eventually require hyperHTML
+  // and hoist it on the current scope
+  var hyperHTML = hyperHTML || require('hyperhtml');
 } catch(o_O) {}
