@@ -64,8 +64,8 @@ var MyInput = function (_HyperHTMLElement2) {
       this.render();
     }
   }, {
-    key: 'handleEvent',
-    value: function handleEvent(e) {
+    key: 'oninput',
+    value: function oninput(e) {
       this.value = e.target.value;
       this.render();
     }

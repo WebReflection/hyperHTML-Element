@@ -1,5 +1,5 @@
 const tressa = require('tressa');
-const {Document, HTMLElement} = require('basichtml');
+const {Document, Event, HTMLElement} = require('basichtml');
 
 global.document = new Document();
 global.customElements = document.customElements;
@@ -164,3 +164,26 @@ MyAttrHack2.define('my-attr-hack2');
 el = new MyAttrHack2();
 document.body.appendChild(el);
 el.key = 'value';
+
+// handleEvent
+class MyHandler extends HyperHTMLElement {
+  handleEvent() { return 123; }
+}
+
+MyHandler.define('my-handler');
+
+el = new MyHandler();
+tressa.assert(el.handleEvent() === 123, 'original handleEvent preserved');
+
+// handleEvent
+class MyRealHandler extends HyperHTMLElement {
+  onclick() { tressa.assert(true, 'click event dispatched'); }
+  created() { this.html`<span onclick="${this}">click me</span>`; }
+}
+
+MyRealHandler.define('my-real-handler');
+
+el = new MyRealHandler();
+document.body.appendChild(el);
+var evt = new Event('click');
+el.firstChild.dispatchEvent(evt);

@@ -12,7 +12,7 @@ MySelf.define('my-self');
 class MyInput extends HyperHTMLElement {
   static get observedAttributes() { return ['value']; }
   attributeChangedCallback() { this.render(); }
-  handleEvent(e) {
+  oninput(e) {
     this.value = e.target.value;
     this.render();
   }

@@ -117,7 +117,7 @@ var HyperHTMLElement = function (defineProperty) {
           // used to ensure create() is called once and once only
           var init = true;
 
-          // ⚠️ if you need to override attributeChangedCallback method
+          // ⚠️ if you need to overwrite/change attributeChangedCallback method
           //    at runtime after class definition, be sure you do so
           //    via Object.defineProperty to preserve its non-enumerable nature.
           defineProperty(proto, 'attributeChangedCallback', {
@@ -135,7 +135,7 @@ var HyperHTMLElement = function (defineProperty) {
             }
           });
 
-          // ⚠️ if you need to override attributeChangedCallback method
+          // ⚠️ if you need to overwrite/change connectedCallback method
           //    at runtime after class definition, be sure you do so
           //    via Object.defineProperty to preserve its non-enumerable nature.
           var onConnected = proto.connectedCallback;
@@ -153,7 +153,7 @@ var HyperHTMLElement = function (defineProperty) {
             }
           });
         } else if (hasChange) {
-          // ⚠️ if you need to override attributeChangedCallback method
+          // ⚠️ if you need to overwrite/change attributeChangedCallback method
           //    at runtime after class definition, be sure you do so
           //    via Object.defineProperty to preserve its non-enumerable nature.
           defineProperty(proto, 'attributeChangedCallback', {
@@ -164,6 +164,25 @@ var HyperHTMLElement = function (defineProperty) {
               if (prev !== curr) {
                 onChanged.apply(this, arguments);
               }
+            }
+          });
+        }
+
+        // whenever you want to directly use the component itself
+        // as EventListener, you can pass it directly.
+        // https://medium.com/@WebReflection/dom-handleevent-a-cross-platform-standard-since-year-2000-5bf17287fd38
+        //  class Reactive extends HyperHTMLElement {
+        //    oninput(e) { console.log(this, 'changed', e.target.value); }
+        //    render() { this.html`<input oninput="${this}">`; }
+        //  }
+        if (!('handleEvent' in proto)) {
+          // ⚠️ if you need to overwrite/change handleEvent method
+          //    at runtime after class definition, be sure you do so
+          //    via Object.defineProperty to preserve its non-enumerable nature.
+          defineProperty(proto, 'handleEvent', {
+            configurable: true,
+            value: function value(event) {
+              this['on' + event.type](event);
             }
           });
         }

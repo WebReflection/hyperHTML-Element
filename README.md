@@ -33,8 +33,17 @@ class MyElement extends HyperHTMLElement {
 
   render() {
     // lazily defined, this.html property points to an hyperHTML bound context
-    // which could be the element shadowRoot or the element itself
-    return this.html`Hello <strong>HyperHTMLElement</strong>`;
+    // which could be the element shadowRoot or the element itself.
+    // All events can be handled directly by the context, thanks to handleEvent
+    // https://medium.com/@WebReflection/dom-handleevent-a-cross-platform-standard-since-year-2000-5bf17287fd38
+    return this.html`Hello <strong onclick="${this}">HyperHTMLElement</strong>`;
+  }
+
+  // using the inherited handleEvent,
+  // events can be easily defined as methods with `on` prefix.
+  onclick(e) {
+    // this is the current custom element
+    console.log(this, 'click', e.target);
   }
 
   // all other native Custom Elements method works as usual
