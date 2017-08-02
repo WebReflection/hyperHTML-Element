@@ -187,3 +187,15 @@ el = new MyRealHandler();
 document.body.appendChild(el);
 var evt = new Event('click');
 el.firstChild.dispatchEvent(evt);
+
+// double created
+let createdInstances = 0;
+class MyCreated extends HyperHTMLElement {
+  created() { createdInstances++; }
+}
+MyCreated.define('my-created');
+
+document.body.appendChild(new MyCreated);
+document.body.appendChild(new MyCreated);
+
+tressa.assert(createdInstances === 2, 'multiple CE do not affect the class');

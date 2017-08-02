@@ -38,7 +38,14 @@ const HyperHTMLElement = (defineProperty => {
       // attributeChangedCallback or connectedCallback
       if ('created' in proto) {
         // used to ensure create() is called once and once only
-        let init = true;
+        defineProperty(
+          proto,
+          '__init',
+          {
+            writable: true,
+            value: true
+          }
+        );
 
         // ⚠️ if you need to overwrite/change attributeChangedCallback method
         //    at runtime after class definition, be sure you do so
@@ -49,8 +56,8 @@ const HyperHTMLElement = (defineProperty => {
           {
             configurable: true,
             value(name, prev, curr) {
-              if (init) {
-                init = false;
+              if (this.__init) {
+                this.__init = false;
                 this.created();
               }
               // ensure setting same value twice
@@ -73,8 +80,8 @@ const HyperHTMLElement = (defineProperty => {
           {
             configurable: true,
             value() {
-              if (init) {
-                init = false;
+              if (this.__init) {
+                this.__init = false;
                 this.created();
               }
               if (hasConnect) {
