@@ -9,14 +9,23 @@ An extensible class to define hyperHTML based Custom Elements.
 ### The Class
 ```js
 const HyperHTMLElement = require('hyperhtml-element');
+const hyperHTML = require('hyperhtml');
 
 class MyElement extends HyperHTMLElement {
+  constructor() {
+    // create a shadow root
+    const shadow = this.attachShadow({mode: 'open'});
+
+    // this.html property points to an hyperHTML bound context
+    // which could be either the element shadowRoot or the element itself.
+    this.html = hyperHTML.bind(shadow);
+  }
   // observed attributes are automatically defined as accessors
   static get observedAttributes() { return ['key']; }
 
   // invoked once the component has been fully upgraded
   // suitable to perform any sort of setup
-  // granted to be invoked right before either
+  // guaranteed to be invoked right before either
   // connectedCallback or attributeChangedCallback
   created() {
     // triggers automatically attributeChangedCallback
@@ -32,11 +41,10 @@ class MyElement extends HyperHTMLElement {
   }
 
   render() {
-    // lazily defined, this.html property points to an hyperHTML bound context
-    // which could be the element shadowRoot or the element itself.
-    // All events can be handled directly by the context, thanks to handleEvent
+    // Using explicit event handler here.
+    // Events may also be delegated to the context by using handleEvent. See:
     // https://medium.com/@WebReflection/dom-handleevent-a-cross-platform-standard-since-year-2000-5bf17287fd38
-    return this.html`Hello <strong onclick="${this}">HyperHTMLElement</strong>`;
+    return this.html`Hello <strong onclick="${this.onclick}">HyperHTMLElement</strong>`;
   }
 
   // using the inherited handleEvent,
