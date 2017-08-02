@@ -114,6 +114,7 @@ var HyperHTMLElement = function (defineProperty) {
         // which is always once, and right before either
         // attributeChangedCallback or connectedCallback
         if ('created' in proto) {
+          var created = proto.created;
           // used to ensure create() is called once and once only
           defineProperty(proto, '__init', {
             writable: true,
@@ -128,7 +129,7 @@ var HyperHTMLElement = function (defineProperty) {
             value: function value(name, prev, curr) {
               if (this.__init) {
                 this.__init = false;
-                this.created();
+                created.call(this);
               }
               // ensure setting same value twice
               // won't trigger twice attributeChangedCallback
