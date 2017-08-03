@@ -1,5 +1,6 @@
 const HyperHTMLElement = (defineProperty => {
   /*! (C) 2017 Andrea Giammarchi - ISC Style License */
+  const __init = {value: false};
   return class HyperHTMLElement extends HTMLElement {
 
     // define a custom-element in the CustomElementsRegistry
@@ -36,13 +37,14 @@ const HyperHTMLElement = (defineProperty => {
       // This method grants to be triggered at the right time,
       // which is always once, and right before either
       // attributeChangedCallback or connectedCallback
-      if ('created' in proto) {
-        const created = proto.created;
+      const created = proto.created;
+      if (created) {
         // used to ensure create() is called once and once only
         defineProperty(
           proto,
           '__init',
           {
+            configurable: true,
             writable: true,
             value: true
           }
@@ -58,8 +60,7 @@ const HyperHTMLElement = (defineProperty => {
             configurable: true,
             value(name, prev, curr) {
               if (this.__init) {
-                this.__init = false;
-                created.call(this);
+                created.call(defineProperty(this, '__init', __init));
               }
               // ensure setting same value twice
               // won't trigger twice attributeChangedCallback
@@ -82,8 +83,7 @@ const HyperHTMLElement = (defineProperty => {
             configurable: true,
             value() {
               if (this.__init) {
-                this.__init = false;
-                this.created();
+                created.call(defineProperty(this, '__init', __init));
               }
               if (hasConnect) {
                 onConnected.apply(this, arguments);

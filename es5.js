@@ -37,6 +37,7 @@ var _fixBabelExtend = function (O) {
 
 var HyperHTMLElement = function (defineProperty) {
   /*! (C) 2017 Andrea Giammarchi - ISC Style License */
+  var __init = { value: false };
   return _fixBabelExtend(function (_HTMLElement) {
     _inherits(HyperHTMLElement, _HTMLElement);
 
@@ -113,10 +114,11 @@ var HyperHTMLElement = function (defineProperty) {
         // This method grants to be triggered at the right time,
         // which is always once, and right before either
         // attributeChangedCallback or connectedCallback
-        if ('created' in proto) {
-          var created = proto.created;
+        var created = proto.created;
+        if (created) {
           // used to ensure create() is called once and once only
           defineProperty(proto, '__init', {
+            configurable: true,
             writable: true,
             value: true
           });
@@ -128,8 +130,7 @@ var HyperHTMLElement = function (defineProperty) {
             configurable: true,
             value: function value(name, prev, curr) {
               if (this.__init) {
-                this.__init = false;
-                created.call(this);
+                created.call(defineProperty(this, '__init', __init));
               }
               // ensure setting same value twice
               // won't trigger twice attributeChangedCallback
@@ -148,8 +149,7 @@ var HyperHTMLElement = function (defineProperty) {
             configurable: true,
             value: function value() {
               if (this.__init) {
-                this.__init = false;
-                this.created();
+                created.call(defineProperty(this, '__init', __init));
               }
               if (hasConnect) {
                 onConnected.apply(this, arguments);
