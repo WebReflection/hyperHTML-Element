@@ -188,6 +188,19 @@ document.body.appendChild(el);
 var evt = new Event('click');
 el.firstChild.dispatchEvent(evt);
 
+// delegated handleEvent
+class MyDelegatedHandler extends HyperHTMLElement {
+  whenClickHappens() { tressa.assert(true, 'whenClickHappens event dispatched'); }
+  created() { this.html`<span data-call="whenClickHappens" onclick="${this}">click me</span>`; }
+}
+
+MyDelegatedHandler.define('my-delegated-handler');
+
+el = new MyDelegatedHandler();
+document.body.appendChild(el);
+var evt = new Event('click');
+el.firstChild.dispatchEvent(evt);
+
 // double created
 let createdInstances = 0;
 class MyCreated extends HyperHTMLElement {

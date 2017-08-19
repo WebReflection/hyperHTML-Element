@@ -186,7 +186,7 @@ var HyperHTMLElement = function (defineProperty) {
           defineProperty(proto, 'handleEvent', {
             configurable: true,
             value: function value(event) {
-              this['on' + event.type](event);
+              this[event.currentTarget.dataset.call || 'on' + event.type](event);
             }
           });
         }

@@ -128,7 +128,10 @@ const HyperHTMLElement = (defineProperty => {
           {
             configurable: true,
             value(event) {
-              this['on' + event.type](event);
+              this[
+                event.currentTarget.dataset.call ||
+                ('on' + event.type)
+              ](event);
             }
           }
         );
