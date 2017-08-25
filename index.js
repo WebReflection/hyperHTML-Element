@@ -1,6 +1,7 @@
 const HyperHTMLElement = (defineProperty => {
   /*! (C) 2017 Andrea Giammarchi - ISC Style License */
   const _init$ = {value: false};
+
   return class HyperHTMLElement extends HTMLElement {
 
     // define a custom-element in the CustomElementsRegistry
@@ -183,7 +184,46 @@ const HyperHTMLElement = (defineProperty => {
       })._hyperHTML$;
     }
 
+    // ---------------------//
+    // Basic State Handling //
+    // ---------------------//
+
+    // overwrite this method with your own render
+    render() {}
+
+    // define the default state object
+    // you could use observed properties too
+    get defaultState() { return {}; }
+
+    // the state is read-only
+    get state() {
+      return this._state$ || defineProperty(
+        this, '_state$', {
+          writable: true,
+          value: this.defaultState
+        }
+      )._state$;
+    }
+
+    // currently a state is a shallow copy, like in Preact or other libraries.
+    // after the state is updated, the render() method will be invoked.
+    // ⚠️ do not ever call this.setState() inside this.render()
+    setState(state) {
+      const _state$ = this.state;
+      this._state$ = extend(
+        _state$,
+        typeof state === 'function' ?
+          state.call(this, _state$) : state
+      );
+      this.render();
+    }
+
   };
+
+  function extend(target, source) {
+    for (var key in source) target[key] = source[key];
+    return target;
+  }
 
 })(Object.defineProperty);
 

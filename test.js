@@ -215,3 +215,54 @@ document.body.appendChild(new MyCreated);
 document.body.appendChild(new MyCreated);
 
 tressa.assert(createdInstances === 2, 'multiple CE do not affect the class');
+
+// setState with default
+let random = Math.random();
+class StateHandlerDefault extends HyperHTMLElement {
+  updateState(state) {
+    this.setState(state);
+  }
+}
+
+StateHandlerDefault.define('state-handler-default');
+
+el = new StateHandlerDefault();
+el.updateState({random: random});
+tressa.assert(
+  el.state.random === random,
+  'state created from scratch and updated'
+);
+
+
+// setState
+class StateHandler extends HyperHTMLElement {
+  get defaultState() {
+    return {a: 1};
+  }
+  updateState(state) {
+    this.setState(state);
+  }
+}
+
+StateHandler.define('state-handler');
+
+el = new StateHandler();
+random = Math.random();
+el.updateState({random: random});
+tressa.assert(
+  el.state.random === random && el.state.a === 1,
+  'state created from default and updated'
+);
+
+// setState callback
+class StateHandlerCallback extends HyperHTMLElement {}
+
+StateHandlerCallback.define('state-handler-callback');
+
+el = new StateHandlerCallback();
+el.setState({value: 1});
+el.setState(prev => ({value: prev.value + 1}));
+tressa.assert(
+  el.state.value === 2,
+  'callback executed and result assigned'
+);

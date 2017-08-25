@@ -38,6 +38,7 @@ var _fixBabelExtend = function (O) {
 var HyperHTMLElement = function (defineProperty) {
   /*! (C) 2017 Andrea Giammarchi - ISC Style License */
   var _init$ = { value: false };
+
   return _fixBabelExtend(function (_HTMLElement) {
     _inherits(HyperHTMLElement, _HTMLElement);
 
@@ -48,6 +49,32 @@ var HyperHTMLElement = function (defineProperty) {
     }
 
     _createClass(HyperHTMLElement, [{
+      key: 'render',
+
+
+      // ---------------------//
+      // Basic State Handling //
+      // ---------------------//
+
+      // overwrite this method with your own render
+      value: function render() {}
+
+      // define the default state object
+      // you could use observed properties too
+
+    }, {
+      key: 'setState',
+
+
+      // currently a state is a shallow copy, like in Preact or other libraries.
+      // after the state is updated, the render() method will be invoked.
+      // ⚠️ do not ever call this.setState() inside this.render()
+      value: function setState(state) {
+        var _state$ = this.state;
+        this._state$ = extend(_state$, typeof state === 'function' ? state.call(this, _state$) : state);
+        this.render();
+      }
+    }, {
       key: 'html',
 
 
@@ -73,6 +100,22 @@ var HyperHTMLElement = function (defineProperty) {
           // as container for its own content (it just works too)
           this)
         })._hyperHTML$;
+      }
+    }, {
+      key: 'defaultState',
+      get: function get() {
+        return {};
+      }
+
+      // the state is read-only
+
+    }, {
+      key: 'state',
+      get: function get() {
+        return this._state$ || defineProperty(this, '_state$', {
+          writable: true,
+          value: this.defaultState
+        })._state$;
       }
     }], [{
       key: 'define',
@@ -214,6 +257,12 @@ var HyperHTMLElement = function (defineProperty) {
 
     return HyperHTMLElement;
   }(HTMLElement));
+
+  function extend(target, source) {
+    for (var key in source) {
+      target[key] = source[key];
+    }return target;
+  }
 }(Object.defineProperty);
 
 try {

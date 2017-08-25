@@ -22,22 +22,22 @@
       <div class='fl pad1y space-right2'>
         <span class="strong">100% </span>
         <span class="quiet">Statements</span>
-        <span class='fraction'>99/99</span>
+        <span class='fraction'>118/118</span>
       </div>
       <div class='fl pad1y space-right2'>
         <span class="strong">100% </span>
         <span class="quiet">Branches</span>
-        <span class='fraction'>8/8</span>
+        <span class='fraction'>10/10</span>
       </div>
       <div class='fl pad1y space-right2'>
         <span class="strong">100% </span>
         <span class="quiet">Functions</span>
-        <span class='fraction'>26/26</span>
+        <span class='fraction'>29/29</span>
       </div>
       <div class='fl pad1y space-right2'>
         <span class="strong">100% </span>
         <span class="quiet">Lines</span>
-        <span class='fraction'>98/98</span>
+        <span class='fraction'>116/116</span>
       </div>
     </div>
   </div>
@@ -260,7 +260,58 @@
 215
 216
 217
-218</td><td class="line-coverage quiet"><span class="cline-any cline-yes">1×</span>
+218
+219
+220
+221
+222
+223
+224
+225
+226
+227
+228
+229
+230
+231
+232
+233
+234
+235
+236
+237
+238
+239
+240
+241
+242
+243
+244
+245
+246
+247
+248
+249
+250
+251
+252
+253
+254
+255
+256
+257
+258
+259
+260
+261
+262
+263
+264
+265
+266
+267
+268
+269</td><td class="line-coverage quiet"><span class="cline-any cline-yes">1×</span>
 <span class="cline-any cline-yes">1×</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1×</span>
@@ -477,6 +528,57 @@
 <span class="cline-any cline-yes">1×</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">const tressa = require('tressa');
 const {Document, Event, HTMLElement} = require('basichtml');
 &nbsp;
@@ -694,13 +796,64 @@ document.body.appendChild(new MyCreated);
 document.body.appendChild(new MyCreated);
 &nbsp;
 tressa.assert(createdInstances === 2, 'multiple CE do not affect the class');
+&nbsp;
+// setState with default
+let random = Math.random();
+class StateHandlerDefault extends HyperHTMLElement {
+  updateState(state) {
+    this.setState(state);
+  }
+}
+&nbsp;
+StateHandlerDefault.define('state-handler-default');
+&nbsp;
+el = new StateHandlerDefault();
+el.updateState({random: random});
+tressa.assert(
+  el.state.random === random,
+  'state created from scratch and updated'
+);
+&nbsp;
+&nbsp;
+// setState
+class StateHandler extends HyperHTMLElement {
+  get defaultState() {
+    return {a: 1};
+  }
+  updateState(state) {
+    this.setState(state);
+  }
+}
+&nbsp;
+StateHandler.define('state-handler');
+&nbsp;
+el = new StateHandler();
+random = Math.random();
+el.updateState({random: random});
+tressa.assert(
+  el.state.random === random &amp;&amp; el.state.a === 1,
+  'state created from default and updated'
+);
+&nbsp;
+// setState callback
+class StateHandlerCallback extends HyperHTMLElement {}
+&nbsp;
+StateHandlerCallback.define('state-handler-callback');
+&nbsp;
+el = new StateHandlerCallback();
+el.setState({value: 1});
+el.setState(prev =&gt; ({value: prev.value + 1}));
+tressa.assert(
+  el.state.value === 2,
+  'callback executed and result assigned'
+);
 &nbsp;</pre></td></tr>
 </table></pre>
 <div class='push'></div><!-- for sticky footer -->
 </div><!-- /wrapper -->
 <div class='footer quiet pad2 space-top1 center small'>
   Code coverage
-  generated by <a href="http://istanbul-js.org/" target="_blank">istanbul</a> at Fri Aug 25 2017 08:57:30 GMT+0100 (BST)
+  generated by <a href="http://istanbul-js.org/" target="_blank">istanbul</a> at Fri Aug 25 2017 11:33:13 GMT+0100 (BST)
 </div>
 </div>
 <script src="../prettify.js"></script>
