@@ -1,6 +1,17 @@
 const HyperHTMLElement = (defineProperty => {
   /*! (C) 2017 Andrea Giammarchi - ISC Style License */
   const _init$ = {value: false};
+  const _JSON$ = defineProperty(
+    defineProperty({}, 'toJSON', {
+      value() {
+        var out = {}, k;
+        for (k in this) out[k] = this[k];
+        return out;
+      }
+    }), '_count$',
+    {writable: true, value: 0}
+  );
+
   return class HyperHTMLElement extends HTMLElement {
 
     // define a custom-element in the CustomElementsRegistry
@@ -183,7 +194,57 @@ const HyperHTMLElement = (defineProperty => {
       })._hyperHTML$;
     }
 
+    // basic state handling
+
+    // overwrite this method with your own render
+    render() {}
+
+    // define the default state object
+    // you could use observed properties too
+    get defaultState() { return {}; }
+
+    // the state is read-only
+    get state() {
+      return this._state$ || defineProperty(
+        this, '_state$', {
+          writable: true,
+          value: connect(
+            _JSON$,
+            this.defaultState
+          )
+        }
+      )._state$;
+    }
+
+    // whenever you need to update the state
+    // current implementation is based on inheritance
+    // so there are infinite level of state history
+    // after the state is updated, the render() method will be invoked
+    // ⚠️ do not ever call this.setState() inside this.render()
+    setState(state) {
+      const _state$ = this.state;
+      this._state$ = connect(
+        10 < ++_state$._count$ ?
+          connect(_JSON$, _state$.toJSON()) :
+          _state$,
+        typeof state === 'function' ?
+          state.call(this, _state$) : state
+      );
+      this.render();
+    }
+
   };
+
+  // a simplified version of the flatstate utility
+  // https://github.com/WebReflection/flatstate
+  function State(state) {
+    for (var k in state) this[k] = state[k];
+  }
+
+  function connect(previous, current) {
+    State.prototype = previous;
+    return new State(current);
+  }
 
 })(Object.defineProperty);
 
