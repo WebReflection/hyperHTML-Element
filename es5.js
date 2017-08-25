@@ -37,7 +37,7 @@ var _fixBabelExtend = function (O) {
 
 var HyperHTMLElement = function (defineProperty) {
   /*! (C) 2017 Andrea Giammarchi - ISC Style License */
-  var __init = { value: false };
+  var _init$ = { value: false };
   return _fixBabelExtend(function (_HTMLElement) {
     _inherits(HyperHTMLElement, _HTMLElement);
 
@@ -60,7 +60,7 @@ var HyperHTMLElement = function (defineProperty) {
         //    then you have to deal with IE11 and broken ES5 implementations
         //    where a getter in the prototype curses forever instances
         //    properties definition.
-        return this.__hyperHTML || defineProperty(this, '__hyperHTML', {
+        return this._hyperHTML$ || defineProperty(this, '_hyperHTML$', {
           configurable: true,
           value: hyperHTML.bind(
           // in case of Shadow DOM {mode: "open"}, use it
@@ -72,7 +72,7 @@ var HyperHTMLElement = function (defineProperty) {
           // if no Shadow DOM is used, simply use the component
           // as container for its own content (it just works too)
           this)
-        }).__hyperHTML;
+        })._hyperHTML$;
       }
     }], [{
       key: 'define',
@@ -117,7 +117,7 @@ var HyperHTMLElement = function (defineProperty) {
         var created = proto.created;
         if (created) {
           // used to ensure create() is called once and once only
-          defineProperty(proto, '__init', {
+          defineProperty(proto, '_init$', {
             configurable: true,
             writable: true,
             value: true
@@ -129,8 +129,8 @@ var HyperHTMLElement = function (defineProperty) {
           defineProperty(proto, 'attributeChangedCallback', {
             configurable: true,
             value: function value(name, prev, curr) {
-              if (this.__init) {
-                created.call(defineProperty(this, '__init', __init));
+              if (this._init$) {
+                created.call(defineProperty(this, '_init$', _init$));
               }
               // ensure setting same value twice
               // won't trigger twice attributeChangedCallback
@@ -148,8 +148,8 @@ var HyperHTMLElement = function (defineProperty) {
           defineProperty(proto, 'connectedCallback', {
             configurable: true,
             value: function value() {
-              if (this.__init) {
-                created.call(defineProperty(this, '__init', __init));
+              if (this._init$) {
+                created.call(defineProperty(this, '_init$', _init$));
               }
               if (hasConnect) {
                 onConnected.apply(this, arguments);
@@ -172,6 +172,22 @@ var HyperHTMLElement = function (defineProperty) {
           });
         }
 
+        // define lazily all handlers
+        // class { handleClick() { ... }
+        // render() { `<a onclick=${this.handleClick}>` } }
+        Object.getOwnPropertyNames(proto).forEach(function (key) {
+          if (/^handle[A-Z]/.test(key)) {
+            var _key$ = '_' + key + '$';
+            var method = proto[key];
+            defineProperty(proto, key, {
+              configurable: true,
+              get: function get() {
+                return this[_key$] || (this[_key$] = method.bind(this));
+              }
+            });
+          }
+        });
+
         // whenever you want to directly use the component itself
         // as EventListener, you can pass it directly.
         // https://medium.com/@WebReflection/dom-handleevent-a-cross-platform-standard-since-year-2000-5bf17287fd38
@@ -190,6 +206,7 @@ var HyperHTMLElement = function (defineProperty) {
             }
           });
         }
+
         customElements.define(name, Class);
         return Class;
       }

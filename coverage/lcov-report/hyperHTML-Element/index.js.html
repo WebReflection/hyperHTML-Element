@@ -22,22 +22,22 @@
       <div class='fl pad1y space-right2'>
         <span class="strong">100% </span>
         <span class="quiet">Statements</span>
-        <span class='fraction'>41/41</span>
+        <span class='fraction'>47/47</span>
       </div>
       <div class='fl pad1y space-right2'>
         <span class="strong">100% </span>
         <span class="quiet">Branches</span>
-        <span class='fraction'>31/31</span>
+        <span class='fraction'>35/35</span>
       </div>
       <div class='fl pad1y space-right2'>
         <span class="strong">100% </span>
         <span class="quiet">Functions</span>
-        <span class='fraction'>8/8</span>
+        <span class='fraction'>9/9</span>
       </div>
       <div class='fl pad1y space-right2'>
         <span class="strong">100% </span>
         <span class="quiet">Lines</span>
-        <span class='fraction'>40/40</span>
+        <span class='fraction'>46/46</span>
       </div>
     </div>
   </div>
@@ -220,7 +220,25 @@
 175
 176
 177
-178</td><td class="line-coverage quiet"><span class="cline-any cline-yes">1×</span>
+178
+179
+180
+181
+182
+183
+184
+185
+186
+187
+188
+189
+190
+191
+192
+193
+194
+195
+196</td><td class="line-coverage quiet"><span class="cline-any cline-yes">1×</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1×</span>
 <span class="cline-any cline-yes">1×</span>
@@ -327,6 +345,23 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">4×</span>
 <span class="cline-any cline-yes">3×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">12×</span>
+<span class="cline-any cline-yes">56×</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -351,6 +386,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">2×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -399,7 +435,7 @@
 <span class="cline-any cline-yes">1×</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">const HyperHTMLElement = (defineProperty =&gt; {
   /*! (C) 2017 Andrea Giammarchi - ISC Style License */
-  const __init = {value: false};
+  const _init$ = {value: false};
   return class HyperHTMLElement extends HTMLElement {
 &nbsp;
     // define a custom-element in the CustomElementsRegistry
@@ -441,7 +477,7 @@
         // used to ensure create() is called once and once only
         defineProperty(
           proto,
-          '__init',
+          '_init$',
           {
             configurable: true,
             writable: true,
@@ -458,8 +494,8 @@
           {
             configurable: true,
             value(name, prev, curr) {
-              if (this.__init) {
-                created.call(defineProperty(this, '__init', __init));
+              if (this._init$) {
+                created.call(defineProperty(this, '_init$', _init$));
               }
               // ensure setting same value twice
               // won't trigger twice attributeChangedCallback
@@ -481,8 +517,8 @@
           {
             configurable: true,
             value() {
-              if (this.__init) {
-                created.call(defineProperty(this, '__init', __init));
+              if (this._init$) {
+                created.call(defineProperty(this, '_init$', _init$));
               }
               if (hasConnect) {
                 onConnected.apply(this, arguments);
@@ -510,6 +546,23 @@
         );
       }
 &nbsp;
+      // define lazily all handlers
+      // class { handleClick() { ... }
+      // render() { `&lt;a onclick=${this.handleClick}&gt;` } }
+      Object.getOwnPropertyNames(proto).forEach(key =&gt; {
+        if (/^handle[A-Z]/.test(key)) {
+          const _key$ = '_' + key + '$';
+          const method = proto[key];
+          defineProperty(proto, key, {
+            configurable: true,
+            get() {
+              return  this[_key$] ||
+                      (this[_key$] = method.bind(this));
+            }
+          });
+        }
+      });
+&nbsp;
       // whenever you want to directly use the component itself
       // as EventListener, you can pass it directly.
       // https://medium.com/@WebReflection/dom-handleevent-a-cross-platform-standard-since-year-2000-5bf17287fd38
@@ -535,6 +588,7 @@
           }
         );
       }
+&nbsp;
       customElements.define(name, Class);
       return Class;
     }
@@ -548,7 +602,7 @@
       //    then you have to deal with IE11 and broken ES5 implementations
       //    where a getter in the prototype curses forever instances
       //    properties definition.
-      return this.__hyperHTML || defineProperty(this, '__hyperHTML', {
+      return this._hyperHTML$ || defineProperty(this, '_hyperHTML$', {
         configurable: true,
         value: hyperHTML.bind(
           // in case of Shadow DOM {mode: "open"}, use it
@@ -561,7 +615,7 @@
           // as container for its own content (it just works too)
           this
         )
-      }).__hyperHTML;
+      })._hyperHTML$;
     }
 &nbsp;
   };
@@ -580,7 +634,7 @@ try {
 </div><!-- /wrapper -->
 <div class='footer quiet pad2 space-top1 center small'>
   Code coverage
-  generated by <a href="http://istanbul-js.org/" target="_blank">istanbul</a> at Sat Aug 19 2017 15:04:46 GMT+0100 (BST)
+  generated by <a href="http://istanbul-js.org/" target="_blank">istanbul</a> at Fri Aug 25 2017 08:57:30 GMT+0100 (BST)
 </div>
 </div>
 <script src="../prettify.js"></script>

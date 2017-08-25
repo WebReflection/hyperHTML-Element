@@ -1,6 +1,6 @@
 const HyperHTMLElement = (defineProperty => {
   /*! (C) 2017 Andrea Giammarchi - ISC Style License */
-  const __init = {value: false};
+  const _init$ = {value: false};
   return class HyperHTMLElement extends HTMLElement {
 
     // define a custom-element in the CustomElementsRegistry
@@ -42,7 +42,7 @@ const HyperHTMLElement = (defineProperty => {
         // used to ensure create() is called once and once only
         defineProperty(
           proto,
-          '__init',
+          '_init$',
           {
             configurable: true,
             writable: true,
@@ -59,8 +59,8 @@ const HyperHTMLElement = (defineProperty => {
           {
             configurable: true,
             value(name, prev, curr) {
-              if (this.__init) {
-                created.call(defineProperty(this, '__init', __init));
+              if (this._init$) {
+                created.call(defineProperty(this, '_init$', _init$));
               }
               // ensure setting same value twice
               // won't trigger twice attributeChangedCallback
@@ -82,8 +82,8 @@ const HyperHTMLElement = (defineProperty => {
           {
             configurable: true,
             value() {
-              if (this.__init) {
-                created.call(defineProperty(this, '__init', __init));
+              if (this._init$) {
+                created.call(defineProperty(this, '_init$', _init$));
               }
               if (hasConnect) {
                 onConnected.apply(this, arguments);
@@ -111,6 +111,23 @@ const HyperHTMLElement = (defineProperty => {
         );
       }
 
+      // define lazily all handlers
+      // class { handleClick() { ... }
+      // render() { `<a onclick=${this.handleClick}>` } }
+      Object.getOwnPropertyNames(proto).forEach(key => {
+        if (/^handle[A-Z]/.test(key)) {
+          const _key$ = '_' + key + '$';
+          const method = proto[key];
+          defineProperty(proto, key, {
+            configurable: true,
+            get() {
+              return  this[_key$] ||
+                      (this[_key$] = method.bind(this));
+            }
+          });
+        }
+      });
+
       // whenever you want to directly use the component itself
       // as EventListener, you can pass it directly.
       // https://medium.com/@WebReflection/dom-handleevent-a-cross-platform-standard-since-year-2000-5bf17287fd38
@@ -136,6 +153,7 @@ const HyperHTMLElement = (defineProperty => {
           }
         );
       }
+
       customElements.define(name, Class);
       return Class;
     }
@@ -149,7 +167,7 @@ const HyperHTMLElement = (defineProperty => {
       //    then you have to deal with IE11 and broken ES5 implementations
       //    where a getter in the prototype curses forever instances
       //    properties definition.
-      return this.__hyperHTML || defineProperty(this, '__hyperHTML', {
+      return this._hyperHTML$ || defineProperty(this, '_hyperHTML$', {
         configurable: true,
         value: hyperHTML.bind(
           // in case of Shadow DOM {mode: "open"}, use it
@@ -162,7 +180,7 @@ const HyperHTMLElement = (defineProperty => {
           // as container for its own content (it just works too)
           this
         )
-      }).__hyperHTML;
+      })._hyperHTML$;
     }
 
   };

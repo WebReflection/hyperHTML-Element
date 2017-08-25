@@ -167,13 +167,16 @@ el.key = 'value';
 
 // handleEvent
 class MyHandler extends HyperHTMLElement {
-  handleEvent() { return 123; }
+  handleEvent() { this.value = 123; return this; }
 }
 
 MyHandler.define('my-handler');
 
 el = new MyHandler();
-tressa.assert(el.handleEvent() === 123, 'original handleEvent preserved');
+tressa.assert(
+  el.handleEvent() === el && el.value === 123,
+  'original handleEvent preserved and bound'
+);
 
 // handleEvent
 class MyRealHandler extends HyperHTMLElement {
