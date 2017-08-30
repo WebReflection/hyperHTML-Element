@@ -191,6 +191,11 @@ document.body.appendChild(el);
 var evt = new Event('click');
 el.firstChild.dispatchEvent(evt);
 
+// reaches currentTarget without a dataset
+document.addEventListener('click', el);
+document.dispatchEvent(evt);
+document.removeEventListener('click', el);
+
 // delegated handleEvent
 class MyDelegatedHandler extends HyperHTMLElement {
   whenClickHappens() { tressa.assert(true, 'whenClickHappens event dispatched'); }
