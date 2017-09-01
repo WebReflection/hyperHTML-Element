@@ -70,8 +70,7 @@ var HyperHTMLElement = function (defineProperty) {
       // after the state is updated, the render() method will be invoked.
       // ⚠️ do not ever call this.setState() inside this.render()
       value: function setState(state) {
-        var _state$ = this.state;
-        this._state$ = extend(_state$, typeof state === 'function' ? state.call(this, _state$) : state);
+        extend(this.state, typeof state === 'function' ? state.call(this, this.state) : state);
         this.render();
       }
     }, {
@@ -107,15 +106,18 @@ var HyperHTMLElement = function (defineProperty) {
         return {};
       }
 
-      // the state is read-only
+      // the state with a default
 
     }, {
       key: 'state',
       get: function get() {
-        return this._state$ || defineProperty(this, '_state$', {
-          writable: true,
-          value: this.defaultState
-        })._state$;
+        return this._state$ || (this.state = this.defaultState);
+      }
+
+      // it can be set too if necessary, it won't invoke render()
+      ,
+      set: function set(value) {
+        defineProperty(this, '_state$', { configurable: true, value: value });
       }
     }], [{
       key: 'define',

@@ -195,25 +195,24 @@ const HyperHTMLElement = (defineProperty => {
     // you could use observed properties too
     get defaultState() { return {}; }
 
-    // the state is read-only
+    // the state with a default
     get state() {
-      return this._state$ || defineProperty(
-        this, '_state$', {
-          writable: true,
-          value: this.defaultState
-        }
-      )._state$;
+      return this._state$ || (this.state = this.defaultState);
+    }
+
+    // it can be set too if necessary, it won't invoke render()
+    set state(value) {
+      defineProperty(this, '_state$', {configurable: true, value: value});
     }
 
     // currently a state is a shallow copy, like in Preact or other libraries.
     // after the state is updated, the render() method will be invoked.
     // ⚠️ do not ever call this.setState() inside this.render()
     setState(state) {
-      const _state$ = this.state;
-      this._state$ = extend(
-        _state$,
+      extend(
+        this.state,
         typeof state === 'function' ?
-          state.call(this, _state$) : state
+          state.call(this, this.state) : state
       );
       this.render();
     }

@@ -271,3 +271,21 @@ tressa.assert(
   el.state.value === 2,
   'callback executed and result assigned'
 );
+
+class DefaultState extends HyperHTMLElement {
+  get defaultState() { return {a: 'a'}; }
+  render() {}
+}
+class State extends HyperHTMLElement {}
+var ds = new DefaultState;
+var o = ds.state;
+tressa.assert(!ds.propertyIsEnumerable('state'), 'states are not enumerable');
+tressa.assert(!ds.propertyIsEnumerable('_state$'), 'neither their secret');
+tressa.assert(o.a === 'a', 'default state retrieved');
+var s = new State;
+s.state = o;
+tressa.assert(s.state === o, 'state can be set too');
+ds.setState({b: 'b'});
+tressa.assert(o.a === 'a' && o.b === 'b', 'state was updated');
+s.state = {z: 123};
+tressa.assert(s.state.z === 123 && !s.state.a, 'state can be re-set too');
