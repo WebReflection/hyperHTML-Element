@@ -82,23 +82,22 @@ var HyperHTMLElement = function (defineProperty) {
       // the _shadowRoot property, if set due closed shadow root,
       // or the custom-element itself if no Shadow DOM is used.
       get: function get() {
-        // ⚠️ defineProperty(this, 'html', {...}) would be the intent
-        //    then you have to deal with IE11 and broken ES5 implementations
-        //    where a getter in the prototype curses forever instances
-        //    properties definition.
-        return this._hyperHTML$ || defineProperty(this, '_hyperHTML$', {
-          configurable: true,
-          value: hyperHTML.bind(
-          // in case of Shadow DOM {mode: "open"}, use it
-          this.shadowRoot ||
-          // in case of Shadow DOM {mode: "close"}, use it
-          // this needs the following reference created upfront
-          // this._shadowRoot = this.attachShadow({mode: "close"});
-          this._shadowRoot ||
-          // if no Shadow DOM is used, simply use the component
-          // as container for its own content (it just works too)
-          this)
-        })._hyperHTML$;
+        return this._html$ || (this.html = hyperHTML.bind(
+        // in case of Shadow DOM {mode: "open"}, use it
+        this.shadowRoot ||
+        // in case of Shadow DOM {mode: "close"}, use it
+        // this needs the following reference created upfront
+        // this._shadowRoot = this.attachShadow({mode: "close"});
+        this._shadowRoot ||
+        // if no Shadow DOM is used, simply use the component
+        // as container for its own content (it just works too)
+        this));
+      }
+
+      // it can be set too if necessary, it won't invoke render()
+      ,
+      set: function set(value) {
+        defineProperty(this, '_html$', { configurable: true, value: value });
       }
     }, {
       key: 'defaultState',
