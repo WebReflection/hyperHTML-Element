@@ -223,4 +223,3 @@ const HyperHTMLElement = (defineProperty => {
   }
 
 })(Object.defineProperty);
-try{module.exports=HyperHTMLElement;var hyperHTML=hyperHTML||require('hyperhtml')}catch(o_O){}

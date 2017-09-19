@@ -1,8 +1,9 @@
 coverage/*
 node_modules/*
 test/*
-test.js
 .babelrc
 .gitignore
 .travis.yml
+hyperhtml-element.js
 package-lock.json
+test.js

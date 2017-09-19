@@ -4,12 +4,15 @@
   "description": "An extensible class to define hyperHTML based Custom Elements",
   "main": "index.js",
   "scripts": {
+    "bundle-cjs": "cp hyperhtml-element.js index.js; echo \"try{module.exports=HyperHTMLElement;var hyperHTML=hyperHTML||require('hyperhtml')}catch(o_O){}\">>index.js",
+    "bundle-mjs": "cp hyperhtml-element.js index.mjs; echo \"export default HyperHTMLElement;\">>index.mjs",
     "babel": "babel index.js > es5.js",
     "babel-test": "babel test/test.js > test/test.es5.js",
-    "build": "npm run babel && npm run babel-test && npm run minify && npm run minify-es5 && npm run size && npm run size-es5 && npm test",
+    "build": "npm run bundle-cjs && npm run bundle-mjs && npm run babel && npm run babel-test && npm run minify && npm run minify-es5 && npm run minify-mjs && npm run size && npm run size-es5 && npm test",
     "coveralls": "cat ./coverage/lcov.info | coveralls",
     "minify": "uglifyjs index.js --comments=/^!/ --compress --mangle -o min.js",
     "minify-es5": "uglifyjs es5.js --comments=/^!/ --compress --mangle -o es5.min.js",
+    "minify-mjs": "uglifyjs index.mjs --comments=/^!/ --compress --mangle -o min.mjs",
     "size": "echo $(tput bold)'Size for ES2015'$(tput sgr0); cat index.js | wc -c;cat min.js | wc -c;gzip -c min.js | wc -c",
     "size-es5": "echo $(tput bold)'Size for ES5'$(tput sgr0); cat es5.js | wc -c;cat es5.min.js | wc -c;gzip -c es5.min.js | wc -c",
     "test": "istanbul cover test.js"

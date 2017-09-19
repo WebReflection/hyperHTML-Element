@@ -265,12 +265,7 @@ var HyperHTMLElement = function (defineProperty) {
     }return target;
   }
 }(Object.defineProperty);
-
 try {
-  // try to export HyperHTMLElement as module
-  module.exports = HyperHTMLElement;
-  // if possible, also eventually require hyperHTML
-  // and hoist it on the current scope
-  var hyperHTML = hyperHTML || require('hyperhtml');
+  module.exports = HyperHTMLElement;var hyperHTML = hyperHTML || require('hyperhtml');
 } catch (o_O) {}
 
