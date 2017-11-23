@@ -4,6 +4,7 @@ test/*
 .babelrc
 .gitignore
 .travis.yml
-hyperhtml-element.js
+es5.config.js
+esm.config.js
 package-lock.json
 test.js

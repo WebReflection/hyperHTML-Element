@@ -6,8 +6,8 @@ global.customElements = document.customElements;
 global.HTMLElement = HTMLElement;
 
 tressa.title('HyperHTMLElement');
+const HyperHTMLElement = require('./cjs/index.js').default;
 
-const HyperHTMLElement = require('./index.js');
 class MyElement extends HyperHTMLElement {
 
   static get observedAttributes() {
@@ -76,7 +76,7 @@ el.value = '123';
 el.anotherValue = '456';
 el.anotherValue = '456';
 tressa.assert(el.value === '123' && el.anotherValue === '456', 'attributes set as expected');
-tressa.assert(el.outerHTML === '<my-input value="123" another-value="456"/>', 'input with expected output');
+tressa.assert(el.outerHTML === '<my-input value="123" another-value="456" />', 'input with expected output');
 
 // for code coverage sake
 class MyEmptiness extends HyperHTMLElement {}
@@ -208,6 +208,11 @@ el = new MyDelegatedHandler();
 document.body.appendChild(el);
 var evt = new Event('click');
 el.firstChild.dispatchEvent(evt);
+
+Object.defineProperty(el.firstChild, 'dataset', {value: null});
+el.firstChild.onclick = el.whenClickHappens;
+el.firstChild.dispatchEvent(new Event('click'));
+
 
 // double created
 let createdInstances = 0;
