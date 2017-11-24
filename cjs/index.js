@@ -1,7 +1,7 @@
 'use strict';
 /*! (C) 2017 Andrea Giammarchi - ISC Style License */
 
-const {bind} = require('hyperhtml');
+const {Component, bind, define, hyper, wire} = require('hyperhtml');
 
 const _init$ = {value: false};
 
@@ -11,7 +11,7 @@ const extend = (target, source) => {
   for (const key in source) target[key] = source[key];
 };
 
-Object.defineProperty(exports, '__esModule', {value: true}).default = class HyperHTMLElement extends HTMLElement {
+class HyperHTMLElement extends HTMLElement {
 
   // define a custom-element in the CustomElementsRegistry
   // class MyEl extends HyperHTMLElement {}
@@ -225,3 +225,12 @@ Object.defineProperty(exports, '__esModule', {value: true}).default = class Hype
   }
 
 };
+
+// exposing hyperHTML utilities
+HyperHTMLElement.Component = Component;
+HyperHTMLElement.bind = bind;
+HyperHTMLElement.intent = define;
+HyperHTMLElement.wire = wire;
+HyperHTMLElement.hyper = hyper;
+
+Object.defineProperty(exports, '__esModule', {value: true}).default = HyperHTMLElement;

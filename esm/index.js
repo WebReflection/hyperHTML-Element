@@ -1,6 +1,6 @@
 /*! (C) 2017 Andrea Giammarchi - ISC Style License */
 
-import {bind} from 'https://unpkg.com/hyperhtml@latest/esm/index.js';
+import {Component, bind, define, hyper, wire} from 'https://unpkg.com/hyperhtml@latest/esm/index.js';
 
 const _init$ = {value: false};
 
@@ -10,7 +10,7 @@ const extend = (target, source) => {
   for (const key in source) target[key] = source[key];
 };
 
-export default class HyperHTMLElement extends HTMLElement {
+class HyperHTMLElement extends HTMLElement {
 
   // define a custom-element in the CustomElementsRegistry
   // class MyEl extends HyperHTMLElement {}
@@ -224,3 +224,12 @@ export default class HyperHTMLElement extends HTMLElement {
   }
 
 };
+
+// exposing hyperHTML utilities
+HyperHTMLElement.Component = Component;
+HyperHTMLElement.bind = bind;
+HyperHTMLElement.intent = define;
+HyperHTMLElement.wire = wire;
+HyperHTMLElement.hyper = hyper;
+
+export default HyperHTMLElement;

@@ -1658,6 +1658,15 @@ var HyperHTMLElement = _fixBabelExtend(function (_HTMLElement) {
   return HyperHTMLElement;
 }(HTMLElement));
 
+
+
+// exposing hyperHTML utilities
+HyperHTMLElement.Component = Component;
+HyperHTMLElement.bind = bind;
+HyperHTMLElement.intent = define;
+HyperHTMLElement.wire = wire;
+HyperHTMLElement.hyper = hyper;
+
 exports['default'] = HyperHTMLElement;
 
 return exports["default"];
