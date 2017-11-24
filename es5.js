@@ -1660,6 +1660,6 @@ var HyperHTMLElement = _fixBabelExtend(function (_HTMLElement) {
 
 exports['default'] = HyperHTMLElement;
 
-return exports;
+return exports["default"];
 
 }({}));

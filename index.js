@@ -1576,6 +1576,6 @@ class HyperHTMLElement extends HTMLElement {
 
 exports['default'] = HyperHTMLElement;
 
-return exports;
+return exports.default;
 
 }({}));
