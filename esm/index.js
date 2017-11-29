@@ -1,6 +1,6 @@
 /*! (C) 2017 Andrea Giammarchi - ISC Style License */
 
-import {Component, bind, define, hyper, wire} from 'hyperhtml';
+import {Component, bind, define, hyper, wire} from 'hyperhtml/esm';
 
 const _init$ = {value: false};
 

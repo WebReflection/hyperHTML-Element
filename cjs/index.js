@@ -1,7 +1,7 @@
 'use strict';
 /*! (C) 2017 Andrea Giammarchi - ISC Style License */
 
-const {Component, bind, define, hyper, wire} = require('hyperhtml');
+const {Component, bind, define, hyper, wire} = require('hyperhtml/cjs');
 
 const _init$ = {value: false};
 

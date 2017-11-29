@@ -5,7 +5,7 @@
   "module": "esm/index.js",
   "main": "cjs/index.js",
   "scripts": {
-    "bundle-cjs": "ascjs ./esm ./cjs",
+    "bundle-cjs": "ascjs ./esm ./cjs && sed -i 's/hyperhtml\\/esm/hyperhtml\\/cjs/' cjs/index.js",
     "bundle-esm": "rollup --config esm.config.js && npm run fix-esm-export",
     "bundle-es5": "rollup --config es5.config.js && npm run fix-es5-export",
     "babel-test": "babel test/test.js > test/test.es5.js",
