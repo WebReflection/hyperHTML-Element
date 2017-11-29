@@ -13,9 +13,7 @@ export default {
   plugins: [
     cdn(),
     resolve({
-      module: true,
-      jsnext: true,
-      browser: true
+      module: true
     })
   ]
 };

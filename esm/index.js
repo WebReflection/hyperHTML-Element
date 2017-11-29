@@ -1,6 +1,6 @@
 /*! (C) 2017 Andrea Giammarchi - ISC Style License */
 
-import {Component, bind, define, hyper, wire} from 'https://unpkg.com/hyperhtml@latest/esm/index.js';
+import {Component, bind, define, hyper, wire} from 'hyperhtml';
 
 const _init$ = {value: false};
 

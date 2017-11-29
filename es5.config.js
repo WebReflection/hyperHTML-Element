@@ -1,7 +1,7 @@
 import babel from "rollup-plugin-babel";
 import babelrc from "babelrc-rollup";
 
-import alias from "rollup-plugin-alias";
+import cdn from "rollup-plugin-cdn";
 import resolve from "rollup-plugin-node-resolve";
 
 export default {
@@ -13,13 +13,9 @@ export default {
     name: 'HyperHTMLElement'
   },
   plugins: [
-    alias({
-      'https://unpkg.com/hyperhtml@latest/esm/index.js': 'node_modules/hyperhtml/esm/index.js'
-    }),
+    cdn(),
     resolve({
-      module: true,
-      jsnext: true,
-      browser: true
+      module: true
     }),
     babel(babelrc())
   ]

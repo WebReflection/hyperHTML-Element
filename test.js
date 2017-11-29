@@ -6,7 +6,7 @@ global.customElements = document.customElements;
 global.HTMLElement = HTMLElement;
 
 tressa.title('HyperHTMLElement');
-const HyperHTMLElement = require('./cjs/index.js').default;
+const HyperHTMLElement = require('./cjs').default;
 
 class MyElement extends HyperHTMLElement {
 
