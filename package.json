@@ -2,6 +2,7 @@
   "name": "hyperhtml-element",
   "version": "1.2.1",
   "description": "An extensible class to define hyperHTML based Custom Elements",
+  "browser": "min.js",
   "module": "esm/index.js",
   "main": "cjs/index.js",
   "scripts": {
