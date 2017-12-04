@@ -1,6 +1,89 @@
 var HyperHTMLElement = (function (exports) {
 'use strict';
 
+// hyperHTML.Component is a very basic class
+// able to create Custom Elements like components
+// including the ability to listen to connect/disconnect
+// events via onconnect/ondisconnect attributes
+function Component() {}
+
+// components will lazily define html or svg properties
+// as soon as these are invoked within the .render() method
+// Such render() method is not provided by the base class
+// but it must be available through the Component extend.
+function setup(content) {
+  Object.defineProperties(
+    Component.prototype,
+    {
+      handleEvent: {value(e) {
+        const ct = e.currentTarget;
+        this[
+          ('getAttribute' in ct && ct.getAttribute('data-call')) ||
+          ('on' + e.type)
+        ](e);
+      }},
+      html: lazyGetter('html', content),
+      svg: lazyGetter('svg', content),
+      state: lazyGetter('state', function () { return this.defaultState; }),
+      defaultState: {get() { return {}; }},
+      setState: {value(state) {
+        const target = this.state;
+        const source = typeof state === 'function' ? state.call(this, target) : state;
+        for (const key in source) target[key] = source[key];
+        this.render();
+      }}
+    }
+  );
+}
+
+// instead of a secret key I could've used a WeakMap
+// However, attaching a property directly will result
+// into better performance with thousands of components
+// hanging around, and less memory pressure caused by the WeakMap
+const lazyGetter = (type, fn) => {
+  const secret = '_' + type + '$';
+  return {
+    get() {
+      return this[secret] || (this[type] = fn.call(this, type));
+    },
+    set(value) {
+      Object.defineProperty(this, secret, {configurable: true, value});
+    }
+  };
+};
+
+const intents = {};
+const keys = [];
+const hasOwnProperty = intents.hasOwnProperty;
+
+let length = 0;
+
+var Intent = {
+
+  // hyperHTML.define('intent', (object, update) => {...})
+  // can be used to define a third parts update mechanism
+  // when every other known mechanism failed.
+  // hyper.define('user', info => info.name);
+  // hyper(node)`<p>${{user}}</p>`;
+  define: (intent, callback) => {
+    if (!(intent in intents)) {
+      length = keys.push(intent);
+    }
+    intents[intent] = callback;
+  },
+
+  // this method is used internally as last resort
+  // to retrieve a value out of an object
+  invoke: (object, callback) => {
+    for (let i = 0; i < length; i++) {
+      let key = keys[i];
+      if (hasOwnProperty.call(object, key)) {
+        return intents[key](object[key], callback);
+      }
+    }
+  }
+};
+
 const global = document.defaultView;
 
 // Node.CONSTANTS
@@ -25,6 +108,66 @@ const EXPANDO = '_hyper: ';
 const SHOULD_USE_TEXT_CONTENT = /^style|textarea$/i;
 const UID = EXPANDO + ((Math.random() * new Date) | 0) + ';';
 const UIDC = '<!--' + UID + '-->';
+
+// you know that kind of basics you need to cover
+// your use case only but you don't want to bloat the library?
+// There's even a package in here:
+// https://www.npmjs.com/package/poorlyfills
+
+// used to dispatch simple events
+let Event = global.Event;
+try {
+  new Event('Event');
+} catch(o_O) {
+  Event = function (type) {
+    const e = document.createEvent('Event');
+    e.initEvent(type, false, false);
+    return e;
+  };
+}
+// used to store template literals
+const Map = global.Map || function Map() {
+  const keys = [], values = [];
+  return {
+    get(obj) {
+      return values[keys.indexOf(obj)];
+    },
+    set(obj, value) {
+      values[keys.push(obj) - 1] = value;
+    }
+  };
+};
+
+// used to store wired content
+const WeakMap = global.WeakMap || function WeakMap() {
+  return {
+    get(obj) { return obj[UID]; },
+    set(obj, value) {
+      Object.defineProperty(obj, UID, {
+        configurable: true,
+        value
+      });
+    }
+  };
+};
+
+// used to store hyper.Components
+const WeakSet = global.WeakSet || function WeakSet() {
+  const wm = new WeakMap;
+  return {
+    add(obj) { wm.set(obj, true); },
+    has(obj) { return wm.get(obj) === true; }
+  };
+};
+
+// used to be sure IE9 or older Androids work as expected
+const isArray = Array.isArray || (toString =>
+  arr => toString.call(arr) === '[object Array]'
+)({}.toString);
+
+const trim = UID.trim || function () {
+  return this.replace(/^\s+|\s+$/g, '');
+};
 
 // these are tiny helpers to simplify most common operations needed here
 const create = (node, type) => doc(node).createElement(type);
@@ -126,9 +269,10 @@ const importNode = hasImportNode ?
   (doc$$1, node) => doc$$1.importNode(node, true) :
   (doc$$1, node) => cloneNode(node);
 
-// just recycling a one-off array to use slice/splice
+// just recycling a one-off array to use slice
 // in every needed place
-const {push, slice, splice, unshift} = [];
+const slice = [].slice;
+
 // lazy evaluated, returns the unique identity
 // of a template literal, as tempalte literal itself.
 // By default, ES2015 template literals are unique
@@ -210,398 +354,6 @@ const SVGFragment = hasContent ?
     append(content, slice.call(container.firstChild.childNodes));
     return content;
   };
-
-// hyperHTML.Component is a very basic class
-// able to create Custom Elements like components
-// including the ability to listen to connect/disconnect
-// events via onconnect/ondisconnect attributes
-function Component() {}
-
-// components will lazily define html or svg properties
-// as soon as these are invoked within the .render() method
-// Such render() method is not provided by the base class
-// but it must be available through the Component extend.
-function setup(content) {
-  Object.defineProperties(
-    Component.prototype,
-    {
-      handleEvent: {value(e) {
-        const ct = e.currentTarget;
-        this[
-          ('getAttribute' in ct && ct.getAttribute('data-call')) ||
-          ('on' + e.type)
-        ](e);
-      }},
-      html: lazyGetter('html', content),
-      svg: lazyGetter('svg', content),
-      state: lazyGetter('state', function () { return this.defaultState; }),
-      defaultState: {get() { return {}; }},
-      setState: {value(state) {
-        const target = this.state;
-        const source = typeof state === 'function' ? state.call(this, target) : state;
-        for (const key in source) target[key] = source[key];
-        this.render();
-      }}
-    }
-  );
-}
-
-// instead of a secret key I could've used a WeakMap
-// However, attaching a property directly will result
-// into better performance with thousands of components
-// hanging around, and less memory pressure caused by the WeakMap
-const lazyGetter = (type, fn) => {
-  const secret = '_' + type + '$';
-  return {
-    get() {
-      return this[secret] || (this[type] = fn.call(this, type));
-    },
-    set(value) {
-      Object.defineProperty(this, secret, {configurable: true, value});
-    }
-  };
-};
-
-var engine = {
-  update: (
-    utils, parentNode, commentNode,
-    liveNodes, liveStart, liveEnd, liveLength,
-    virtualNodes, virtualStart, virtualEnd /*, virtualLength */
-  ) => {
-    while (liveStart < liveEnd && virtualStart < virtualEnd) {
-      const liveValue = liveNodes[liveStart];
-      const virtualValue = virtualNodes[virtualStart];
-      const status = liveValue === virtualValue ?
-                      0 : (liveNodes.indexOf(virtualValue) < 0 ? 1 : -1);
-      // nodes can be either removed ...
-      if (status < 0) {
-        splice.call(liveNodes, liveStart, 1);
-        parentNode.removeChild(utils.getNode(liveValue));
-        liveEnd--;
-        liveLength--;
-      }
-      // ... appended ...
-      else if (0 < status) {
-        splice.call(liveNodes, liveStart, 0, virtualValue);
-        parentNode.insertBefore(utils.getNode(virtualValue), utils.getNode(liveValue));
-        liveStart++;
-        liveEnd++;
-        liveLength++;
-        virtualStart++;
-      }
-      // ... or ignored, since it's the same ...
-      else {
-        liveStart++;
-        virtualStart++;
-      }
-    }
-    if (liveStart < liveEnd) {
-      const remove = splice.call(liveNodes, liveStart, liveEnd - liveStart);
-      liveStart = remove.length;
-      while (liveStart--) {
-        parentNode.removeChild(utils.getNode(remove[liveStart]));
-      }
-    }
-    if (virtualStart < virtualEnd) {
-      splice.apply(
-        liveNodes,
-        [liveEnd, 0].concat(
-          utils.insert(
-            parentNode,
-            slice.call(virtualNodes, virtualStart, virtualEnd),
-            liveEnd < liveLength ?
-              utils.getNode(liveNodes[liveEnd]) : commentNode
-          )
-        )
-      );
-    }
-  }
-};
-
-// this is an overly defensive approach to avoid any possible
-// side-effect when the live collection of nodes is passed around
-/*                0                       0                 0
-000                00                   00                000
- 0000              0000               0000              0000 
-  00000             0000             0000              0000  
-  000000            000000         000000            000000  
-   0000000           0000000      0000000          0000000   
-   0000000000000000  0000000000000000000  0000000000000000   
-   0000000000000000   000000000000000000  0000000000000000   
-   0000000000000000   00000000000000000   000000000000000    
-    0000000            000000   0000000           0000000    
-    0000000000000000   0000000 0000000   000000000000000     
-     0000000000000000  00000000000000  0000000000000000      
-      000000            000000000000             000000      
-       0000000000000      00000000       0000000000000       
-      0  0000000000000000           0000000000000000  0      
-       00  00000000000000000       0000000000000000  00      
-       000   00000     000000   0000000    00000   000       
-        0000   00000        000000       000000  00000       
-        000000  000000     0000000     000000  000000        
-         0000000  000000   00000000   00000  0000000         
-         00000000   00000 000000000 00000  000000000         
-         0000000000   00000000000000000   0000000000         
-          00000000000   00000000000000  00000000000          
-          0000000000000   000000000   0000000000000          
-                000000000   00000   0000000000               
-                       0000  000  0000                       
-                            0 0 0                            
-                                                             
-                    slyer0.deviantart.com                  */
-
-// Megatron is a transformer in charge of mutating
-// a list of live DOM nodes into a new list.
-function Megatron(node, childNodes) {
-  this.node = node;
-  this.childNodes = childNodes;
-}
-
-// it carries the default merge/diff engine
-// that can be swapped via hyperHTML.engine = {...}
-// See hyperhtml-majinbuu to know more
-Megatron.engine = engine;
-
-// quickly erase the related content
-// optionally add a single node/component as value
-Megatron.prototype.empty = function empty(value) {
-  const node = this.node;
-  const childNodes = this.childNodes;
-  let length = childNodes.length;
-  if (length) {
-    const pn = node.parentNode;
-    const remove = splice.call(childNodes, 0, length);
-    while (length--) pn.removeChild(utils.getNode(remove[length]));
-  }
-  if (value) {
-    push.call(childNodes, value);
-    node.parentNode.insertBefore(utils.getNode(value), node);
-  }
-};
-
-// there are numerous ways to optimize a list of nodes
-// that is going to represent another list (or even the same)
-Megatron.prototype.become = function become(virtual) {
-  const vlength = virtual.length;
-  // if there are new elements to push ..
-  if (0 < vlength) {
-    const node = this.node;
-    const live = this.childNodes;
-    const pn = node.parentNode;
-    let llength = live.length;
-    let l = 0;
-    let v = 0;
-    // if the current list is empty, append all nodes
-    if (llength < 1) {
-      push.apply(
-        live,
-        utils.insert(pn, virtual, node)
-      );
-      return;
-    }
-    // if all elements are the same, do pretty much nothing
-    while (l < llength && v < vlength) {
-      // appending nodes/components could be just fine
-      if (live[l] !== virtual[v]) break;
-      l++;
-      v++;
-    }
-    // if we reached the live length destination
-    if (l === llength) {
-      // there could be a tie (nothing to do)
-      if (vlength === llength) return;
-      // or there's only to append
-      push.apply(
-        live,
-        utils.insert(pn, slice.call(virtual, v), node)
-      );
-      return;
-    }
-    // if the new length is reached though
-    if (v === vlength) {
-      // there are nodes to remove
-      utils.remove(pn, splice.call(live, l, llength));
-      return;
-    }
-    // otherwise let's check backward
-    let rl = llength;
-    let rv = vlength;
-    while (rl && rv) {
-      if (live[--rl] !== virtual[--rv]) {
-        ++rl;
-        ++rv;
-        break;
-      }
-    }
-    // now ... lists are not identical, we know that,
-    // but maybe it was a prepend ... so if live length is covered
-    if (rl < 1) {
-      // return after pre-pending all nodes
-      unshift.apply(
-        live,
-        utils.insert(pn, slice.call(virtual, 0, rv), utils.getNode(live[0]))
-      );
-      return;
-    }
-    // or maybe, it was a removal of nodes at the beginning
-    if (rv < 1) {
-      // return after removing all pre-nodes
-      utils.remove(pn, splice.call(live, l, rl));
-      return;
-    }
-    // now we have a boundary of nodes that need to be changed
-    // all the discovered info ar passed to the engine
-    Megatron.engine.update(
-      utils, pn, node,
-      live, l, rl, llength,
-      virtual, v, rv, vlength
-    );
-  } else {
-    this.empty();
-  }
-};
-
-const utils = {
-
-  // the basic default engine is always provided
-  // in case there are conditions that need it
-  engine,
-
-  // an item could be an hyperHTML.Component and, in such case,
-  // it should be rendered as node
-  getNode: node => node instanceof Component ? node.render() : node,
-
-  // append a list of nodes before another node
-  insert: (parentNode, nodes, node) => {
-    const length = nodes.length;
-    if (length === 1) {
-      parentNode.insertBefore(utils.getNode(nodes[0]), node);
-    } else {
-      let i = 0;
-      const tmp = fragment(parentNode);
-      while (i < length)
-        tmp.appendChild(utils.getNode(nodes[i++]));
-      parentNode.insertBefore(tmp, node);
-    }
-    return nodes;
-  },
-
-  // drop a list of nodes from their parentNode
-  remove: (parentNode, nodes) => {
-    let i = nodes.length;
-    while (i--) {
-      parentNode.removeChild(utils.getNode(nodes[i]));
-    }
-  }
-};
-
-
-
-/* TODO: benchmark this is needed at all
-// instead of checking instanceof each time and render potentially twice
-// use a map to retrieve nodes from a generic item
-
-import {Map} from '../shared/poorlyfills.js';
-const get = (map, node) => map.get(node) || set(map, node);
-const set = (map, node) => {
-  const value = utils.getNode(node);
-  map.set(node, value);
-  return value;
-};
-
-*/
-
-const intents = {};
-const keys = [];
-const hasOwnProperty = intents.hasOwnProperty;
-
-let length = 0;
-
-var Intent = {
-
-  // hyperHTML.define('intent', (object, update) => {...})
-  // can be used to define a third parts update mechanism
-  // when every other known mechanism failed.
-  // hyper.define('user', info => info.name);
-  // hyper(node)`<p>${{user}}</p>`;
-  define: (intent, callback) => {
-    if (!(intent in intents)) {
-      length = keys.push(intent);
-    }
-    intents[intent] = callback;
-  },
-
-  // this method is used internally as last resort
-  // to retrieve a value out of an object
-  invoke: (object, callback) => {
-    for (let i = 0; i < length; i++) {
-      let key = keys[i];
-      if (hasOwnProperty.call(object, key)) {
-        return intents[key](object[key], callback);
-      }
-    }
-  }
-};
-
-// you know that kind of basics you need to cover
-// your use case only but you don't want to bloat the library?
-// There's even a package in here:
-// https://www.npmjs.com/package/poorlyfills
-
-// used to dispatch simple events
-let Event = global.Event;
-try {
-  new Event('Event');
-} catch(o_O) {
-  Event = function (type) {
-    const e = document.createEvent('Event');
-    e.initEvent(type, false, false);
-    return e;
-  };
-}
-// used to store template literals
-const Map = global.Map || function Map() {
-  const keys = [], values = [];
-  return {
-    get(obj) {
-      return values[keys.indexOf(obj)];
-    },
-    set(obj, value) {
-      values[keys.push(obj) - 1] = value;
-    }
-  };
-};
-
-// used to store wired content
-const WeakMap = global.WeakMap || function WeakMap() {
-  return {
-    get(obj) { return obj[UID]; },
-    set(obj, value) {
-      Object.defineProperty(obj, UID, {
-        configurable: true,
-        value
-      });
-    }
-  };
-};
-
-// used to store hyper.Components
-const WeakSet = global.WeakSet || function WeakSet() {
-  const wm = new WeakMap;
-  return {
-    add(obj) { wm.set(obj, true); },
-    has(obj) { return wm.get(obj) === true; }
-  };
-};
-
-// used to be sure IE9 or older Androids work as expected
-const isArray = Array.isArray || (toString =>
-  arr => toString.call(arr) === '[object Array]'
-)({}.toString);
-
-const trim = UID.trim || function () {
-  return this.replace(/^\s+|\s+$/g, '');
-};
 
 // every template literal interpolation indicates
 // a precise target in the DOM the template is representing.
@@ -727,6 +479,113 @@ const toStyle = object => {
   return css.join('');
 };
 
+/* AUTOMATICALLY IMPORTED, DO NOT MODIFY */
+/*! (c) 2017 Andrea Giammarchi (ISC) */
+
+/**
+ * This code is a revisited port of the snabbdom vDOM diffing logic,
+ * the same that fuels as fork Vue.js or other libraries.
+ * @credits https://github.com/snabbdom/snabbdom
+ */
+
+const identity = O => O;
+
+const domdiff = (
+  parentNode,     // where changes happen
+  currentNodes,   // Array of current items/nodes
+  futureNodes,    // Array of future items/nodes
+  getNode,        // optional way to retrieve a node from an item
+  beforeNode      // optional item/node to use as insertBefore delimiter
+) => {
+  const get = getNode || identity;
+  const before = beforeNode == null ? null : get(beforeNode);
+  let currentStart = 0, futureStart = 0;
+  let currentEnd = currentNodes.length - 1;
+  let currentStartNode = currentNodes[0];
+  let currentEndNode = currentNodes[currentEnd];
+  let futureEnd = futureNodes.length - 1;
+  let futureStartNode = futureNodes[0];
+  let futureEndNode = futureNodes[futureEnd];
+  while (currentStart <= currentEnd && futureStart <= futureEnd) {
+    if (currentStartNode == null) {
+      currentStartNode = currentNodes[++currentStart];
+    }
+    else if (currentEndNode == null) {
+      currentEndNode = currentNodes[--currentEnd];
+    }
+    else if (futureStartNode == null) {
+      futureStartNode = futureNodes[++futureStart];
+    }
+    else if (futureEndNode == null) {
+      futureEndNode = futureNodes[--futureEnd];
+    }
+    else if (currentStartNode == futureStartNode) {
+      currentStartNode = currentNodes[++currentStart];
+      futureStartNode = futureNodes[++futureStart];
+    }
+    else if (currentEndNode == futureEndNode) {
+      currentEndNode = currentNodes[--currentEnd];
+      futureEndNode = futureNodes[--futureEnd];
+    }
+    else if (currentStartNode == futureEndNode) {
+      parentNode.insertBefore(
+        get(currentStartNode),
+        get(currentEndNode).nextSibling || before
+      );
+      currentStartNode = currentNodes[++currentStart];
+      futureEndNode = futureNodes[--futureEnd];
+    }
+    else if (currentEndNode == futureStartNode) {
+      parentNode.insertBefore(
+        get(currentEndNode),
+        get(currentStartNode)
+      );
+      currentEndNode = currentNodes[--currentEnd];
+      futureStartNode = futureNodes[++futureStart];
+    }
+    else {
+      let index = currentNodes.indexOf(futureStartNode);
+      if (index < 0) {
+        parentNode.insertBefore(
+          get(futureStartNode),
+          get(currentStartNode)
+        );
+        futureStartNode = futureNodes[++futureStart];
+      }
+      else {
+        let el = currentNodes[index];
+        currentNodes[index] = null;
+        parentNode.insertBefore(
+          get(el),
+          get(currentStartNode)
+        );
+        futureStartNode = futureNodes[++futureStart];
+      }
+    }
+  }
+  if (currentStart > currentEnd) {
+    const pin = futureNodes[futureEnd + 1];
+    const place = pin != null ? get(pin) : before;
+    while (futureStart <= futureEnd) {
+      const ch = futureNodes[futureStart++];
+      // ignore until I am sure the else could never happen.
+      // it might be a vDOM thing 'cause it never happens here.
+      /* istanbul ignore else */
+      if (ch != null) parentNode.insertBefore(get(ch), place);
+    }
+  }
+  // ignore until I am sure the else could never happen.
+  // it might be a vDOM thing 'cause it never happens here.
+  /* istanbul ignore else */
+  else if (futureStart > futureEnd) {
+    while (currentStart <= currentEnd) {
+      const ch = currentNodes[currentStart++];
+      if (ch != null) parentNode.removeChild(get(ch));
+    }
+  }
+  return futureNodes;
+};
+
 // hyper.Component have a connected/disconnected
 // mechanism provided by MutationObserver
 // This weak set is used to recognize components
@@ -740,6 +599,8 @@ Cache.prototype = Object.create(null);
 
 // returns an intent to explicitly inject content as html
 const asHTML = html => ({html});
+
+const asNode = item => item instanceof Component ? item.render() : item;
 
 // updates are created once per context upgrade
 // within the main render function (../hyper/render.js)
@@ -889,7 +750,6 @@ const isPromise_ish = value => value != null && 'then' in value;
 //  * it's an Array, resolve all values if Promises and/or
 //    update the node with the resulting list of content
 const setAnyContent = (node, childNodes) => {
-  const transformer = new Megatron(node, childNodes);
   let fastPath = false;
   let oldValue;
   const anyContent = value => {
@@ -905,14 +765,26 @@ const setAnyContent = (node, childNodes) => {
         } else {
           fastPath = true;
           oldValue = value;
-          transformer.empty(text(node, value));
+          childNodes = domdiff(
+            node.parentNode,
+            childNodes,
+            [text(node, value)],
+            asNode,
+            node
+          );
         }
         break;
       case 'object':
       case 'undefined':
         if (value == null) {
           fastPath = false;
-          transformer.empty();
+          childNodes = domdiff(
+            node.parentNode,
+            childNodes,
+            [],
+            asNode,
+            node
+          );
           break;
         }
       default:
@@ -920,7 +792,15 @@ const setAnyContent = (node, childNodes) => {
         oldValue = value;
         if (isArray(value)) {
           if (value.length === 0) {
-            transformer.empty();
+            if (childNodes.length) {
+              childNodes = domdiff(
+                node.parentNode,
+                childNodes,
+                [],
+                asNode,
+                node
+              );
+            }
           } else {
             switch (typeof value[0]) {
               case 'string':
@@ -937,16 +817,34 @@ const setAnyContent = (node, childNodes) => {
                   break;
                 }
               default:
-                transformer.become(value);
+                childNodes = domdiff(
+                  node.parentNode,
+                  childNodes,
+                  value,
+                  asNode,
+                  node
+                );
                 break;
             }
           }
         } else if (value instanceof Component) {
-          transformer.empty(value);
+          childNodes = domdiff(
+            node.parentNode,
+            childNodes,
+            [value],
+            asNode,
+            node
+          );
         } else if (isNode_ish(value)) {
-          transformer.become(value.nodeType === DOCUMENT_FRAGMENT_NODE ?
-            slice.call(value.childNodes) :
-            [value]);
+          childNodes = domdiff(
+            node.parentNode,
+            childNodes,
+            value.nodeType === DOCUMENT_FRAGMENT_NODE ?
+              slice.call(value.childNodes) :
+              [value],
+            asNode,
+            node
+          );
         } else if (isPromise_ish(value)) {
           value.then(anyContent);
         } else if ('placeholder' in value) {
@@ -956,10 +854,18 @@ const setAnyContent = (node, childNodes) => {
         } else if ('any' in value) {
           anyContent(value.any);
         } else if ('html' in value) {
-          transformer.empty();
-          const fragment$$1 = createFragment(node, [].concat(value.html).join(''));
-          childNodes.push.apply(childNodes, fragment$$1.childNodes);
-          node.parentNode.insertBefore(fragment$$1, node);
+          childNodes = domdiff(
+            node.parentNode,
+            childNodes,
+            slice.call(
+              createFragment(
+                node,
+                [].concat(value.html).join('')
+              ).childNodes
+            ),
+            asNode,
+            node
+          );
         } else if ('length' in value) {
           anyContent(slice.call(value));
         } else {
@@ -1305,23 +1211,9 @@ const define = Intent.define;
 hyper.Component = Component;
 hyper.bind = bind;
 hyper.define = define;
+hyper.diff = domdiff;
 hyper.hyper = hyper;
 hyper.wire = wire;
-
-// it is possible to define a different engine
-// to resolve nodes diffing.
-// The engine must provide an update method
-// capable of mutating liveNodes collection
-// and the related DOM.
-// See hyperhtml-majinbuu to know more
-Object.defineProperty(hyper, 'engine', {
-  get: function get() {
-    return Megatron.engine;
-  },
-  set: function set(engine) {
-    Megatron.engine = engine;
-  }
-});
 
 // the wire content is the lazy defined
 // html or svg property of each hyper.Component
