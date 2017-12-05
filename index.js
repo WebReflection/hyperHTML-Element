@@ -355,6 +355,35 @@ const SVGFragment = hasContent ?
     return content;
   };
 
+function Wire(childNodes) {
+  this.childNodes = childNodes;
+  this.length = childNodes.length;
+  this.first = childNodes[0];
+  this.last = childNodes[this.length - 1];
+}
+
+// when a wire is inserted, all its nodes will follow
+Wire.prototype.insert = function insert() {
+  const df = fragment(this.first);
+  append(df, this.childNodes);
+  return df;
+};
+
+// when a wire is removed, all its nodes must be removed as well
+Wire.prototype.remove = function remove() {
+  const first = this.first;
+  const last = this.last;
+  if (this.length === 2) {
+    last.parentNode.removeChild(last);
+  } else {
+    const range = doc(first).createRange();
+    range.setStartBefore(this.childNodes[1]);
+    range.setEndAfter(last);
+    range.deleteContents();
+  }
+  return first;
+};
+
 // every template literal interpolation indicates
 // a precise target in the DOM the template is representing.
 // `<p id=${'attribute'}>some ${'content'}</p>`
@@ -498,7 +527,7 @@ const domdiff = (
   beforeNode      // optional item/node to use as insertBefore delimiter
 ) => {
   const get = getNode || identity;
-  const before = beforeNode == null ? null : get(beforeNode);
+  const before = beforeNode == null ? null : get(beforeNode, 0);
   let currentStart = 0, futureStart = 0;
   let currentEnd = currentNodes.length - 1;
   let currentStartNode = currentNodes[0];
@@ -529,16 +558,16 @@ const domdiff = (
     }
     else if (currentStartNode == futureEndNode) {
       parentNode.insertBefore(
-        get(currentStartNode),
-        get(currentEndNode).nextSibling || before
+        get(currentStartNode, 1),
+        get(currentEndNode, -0).nextSibling
       );
       currentStartNode = currentNodes[++currentStart];
       futureEndNode = futureNodes[--futureEnd];
     }
     else if (currentEndNode == futureStartNode) {
       parentNode.insertBefore(
-        get(currentEndNode),
-        get(currentStartNode)
+        get(currentEndNode, 1),
+        get(currentStartNode, 0)
       );
       currentEndNode = currentNodes[--currentEnd];
       futureStartNode = futureNodes[++futureStart];
@@ -547,8 +576,8 @@ const domdiff = (
       let index = currentNodes.indexOf(futureStartNode);
       if (index < 0) {
         parentNode.insertBefore(
-          get(futureStartNode),
-          get(currentStartNode)
+          get(futureStartNode, 1),
+          get(currentStartNode, 0)
         );
         futureStartNode = futureNodes[++futureStart];
       }
@@ -556,8 +585,8 @@ const domdiff = (
         let el = currentNodes[index];
         currentNodes[index] = null;
         parentNode.insertBefore(
-          get(el),
-          get(currentStartNode)
+          get(el, 1),
+          get(currentStartNode, 0)
         );
         futureStartNode = futureNodes[++futureStart];
       }
@@ -565,13 +594,13 @@ const domdiff = (
   }
   if (currentStart > currentEnd) {
     const pin = futureNodes[futureEnd + 1];
-    const place = pin != null ? get(pin) : before;
+    const place = pin != null ? get(pin, 0) : before;
     while (futureStart <= futureEnd) {
       const ch = futureNodes[futureStart++];
       // ignore until I am sure the else could never happen.
       // it might be a vDOM thing 'cause it never happens here.
       /* istanbul ignore else */
-      if (ch != null) parentNode.insertBefore(get(ch), place);
+      if (ch != null) parentNode.insertBefore(get(ch, 1), place);
     }
   }
   // ignore until I am sure the else could never happen.
@@ -580,7 +609,7 @@ const domdiff = (
   else if (futureStart > futureEnd) {
     while (currentStart <= currentEnd) {
       const ch = currentNodes[currentStart++];
-      if (ch != null) parentNode.removeChild(get(ch));
+      if (ch != null) parentNode.removeChild(get(ch, -1));
     }
   }
   return futureNodes;
@@ -600,7 +629,25 @@ Cache.prototype = Object.create(null);
 // returns an intent to explicitly inject content as html
 const asHTML = html => ({html});
 
-const asNode = item => item instanceof Component ? item.render() : item;
+// returns nodes from wires and components
+const asNode = (item, i) => {
+  return 'ELEMENT_NODE' in item ?
+    item :
+    (item.constructor === Wire ?
+      // in the Wire case, the content can be
+      // removed, post-pended, inserted, or pre-pended and
+      // all these cases are handled by domdiff already
+      /* istanbul ignore next */
+      ((1 / i) < 0 ?
+        (i ? item.remove() : item.last) :
+        (i ? item.insert() : item.first)) :
+      asNode(item.render(), i));
+};
+
+// returns true if domdiff can handle the value
+const canDiff = value =>  'ELEMENT_NODE' in value ||
+value instanceof Wire ||
+value instanceof Component;
 
 // updates are created once per context upgrade
 // within the main render function (../hyper/render.js)
@@ -736,8 +783,7 @@ const invokeAtDistance = (value, callback) => {
   }
 };
 
-// quick and dirty ways to check a value type without abusing instanceof
-const isNode_ish = value => 'ELEMENT_NODE' in value;
+// quick and dirty way to check for Promise/ish values
 const isPromise_ish = value => value != null && 'then' in value;
 
 // in a hyper(node)`<div>${content}</div>` case
@@ -827,15 +873,7 @@ const setAnyContent = (node, childNodes) => {
                 break;
             }
           }
-        } else if (value instanceof Component) {
-          childNodes = domdiff(
-            node.parentNode,
-            childNodes,
-            [value],
-            asNode,
-            node
-          );
-        } else if (isNode_ish(value)) {
+        } else if (canDiff(value)) {
           childNodes = domdiff(
             node.parentNode,
             childNodes,
@@ -1186,17 +1224,17 @@ const weakly = (obj, type) => {
 const wireContent = node => {
   const childNodes = node.childNodes;
   const length = childNodes.length;
-  const wire = [];
+  const wireNodes = [];
   for (let i = 0; i < length; i++) {
     let child = childNodes[i];
     if (
       child.nodeType === ELEMENT_NODE ||
       trim.call(child.textContent).length !== 0
     ) {
-      wire.push(child);
+      wireNodes.push(child);
     }
   }
-  return wire.length === 1 ? wire[0] : wire;
+  return wireNodes.length === 1 ? wireNodes[0] : new Wire(wireNodes);
 };
 
 /*! (c) Andrea Giammarchi (ISC) */
