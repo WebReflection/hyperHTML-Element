@@ -89,7 +89,7 @@ var Intent = {
   }
 };
 
-var global$1 = document.defaultView;
+var G = document.defaultView;
 
 // Node.CONSTANTS
 // 'cause some engine has no global Node defined
@@ -99,6 +99,9 @@ var ELEMENT_NODE = 1;
 var TEXT_NODE = 3;
 var COMMENT_NODE = 8;
 var DOCUMENT_FRAGMENT_NODE = 11;
+
+// HTML related constants
+var VOID_ELEMENTS = /^area|base|br|col|embed|hr|img|input|keygen|link|menuitem|meta|param|source|track|wbr$/i;
 
 // SVG related constants
 var OWNER_SVG_ELEMENT = 'ownerSVGElement';
@@ -120,7 +123,7 @@ var UIDC = '<!--' + UID + '-->';
 // https://www.npmjs.com/package/poorlyfills
 
 // used to dispatch simple events
-var Event = global$1.Event;
+var Event = G.Event;
 try {
   new Event('Event');
 } catch (o_O) {
@@ -131,7 +134,7 @@ try {
   };
 }
 // used to store template literals
-var Map = global$1.Map || function Map() {
+var Map = G.Map || function Map() {
   var keys = [],
       values = [];
   return {
@@ -145,7 +148,7 @@ var Map = global$1.Map || function Map() {
 };
 
 // used to store wired content
-var WeakMap = global$1.WeakMap || function WeakMap() {
+var WeakMap = G.WeakMap || function WeakMap() {
   return {
     get: function get(obj) {
       return obj[UID];
@@ -160,7 +163,7 @@ var WeakMap = global$1.WeakMap || function WeakMap() {
 };
 
 // used to store hyper.Components
-var WeakSet = global$1.WeakSet || function WeakSet() {
+var WeakSet = G.WeakSet || function WeakSet() {
   var wm = new WeakMap();
   return {
     add: function add(obj) {
@@ -197,6 +200,18 @@ var text = function text(node, _text) {
   return doc(node).createTextNode(_text);
 };
 
+// TODO:  I'd love to code-cover RegExp too here
+//        these are fundamental for this library
+
+var almostEverything = '[^ \\f\\n\\r\\t\\/>"\'=]+';
+var attrName = '[^\\S]+' + almostEverything;
+var tagName = '<([a-z]+[a-z0-9:_-]*)((?:';
+var attrPartials = '(?:=(?:\'.*?\'|".*?"|<.+?>|' + almostEverything + '))?)';
+
+var attrSeeker = new RegExp(tagName + attrName + attrPartials + '+)([^\\S]*/?>)', 'gi');
+
+var selfClosing = new RegExp(tagName + attrName + attrPartials + '*)([^\\S]*/>)', 'gi');
+
 var testFragment = fragment(document);
 
 // DOM4 node.append(...many)
@@ -229,14 +244,9 @@ var append = hasAppend ? function (node, childNodes) {
   }
 };
 
-// remove comments parts from attributes to avoid issues
-// with either old browsers or SVG elements
-// export const cleanAttributes = html => html.replace(no, comments);
-var attrName = '[^\\S]+[^ \\f\\n\\r\\t\\/>"\'=]+';
-var no = new RegExp('(<[a-z]+[a-z0-9:_-]*)((?:' + attrName + '(?:=(?:\'.*?\'|".*?"|<.+?>|\\S+))?)+)([^\\S]*/?>)', 'gi');
 var findAttributes = new RegExp('(' + attrName + '=)([\'"]?)' + UIDC + '\\2', 'gi');
 var comments = function comments($0, $1, $2, $3) {
-  return $1 + $2.replace(findAttributes, replaceAttributes) + $3;
+  return '<' + $1 + $2.replace(findAttributes, replaceAttributes) + $3;
 };
 var replaceAttributes = function replaceAttributes($0, $1, $2) {
   return $1 + ($2 || '"') + UID + ($2 || '"');
@@ -246,7 +256,7 @@ var replaceAttributes = function replaceAttributes($0, $1, $2) {
 // create either an SVG or an HTML fragment
 // where such content will be injected
 var createFragment = function createFragment(node, html) {
-  return (OWNER_SVG_ELEMENT in node ? SVGFragment : HTMLFragment)(node, html.replace(no, comments));
+  return (OWNER_SVG_ELEMENT in node ? SVGFragment : HTMLFragment)(node, html.replace(attrSeeker, comments));
 };
 
 // IE/Edge shenanigans proof cloneNode
@@ -313,7 +323,7 @@ var _TL = function TL(template) {
   // TypeScript template literals are not standard
   template.propertyIsEnumerable('raw') ||
   // Firefox < 55 has not standard implementation neither
-  /Firefox\/(\d+)/.test((global$1.navigator || {}).userAgent) && parseFloat(RegExp.$1) < 55) {
+  /Firefox\/(\d+)/.test((G.navigator || {}).userAgent) && parseFloat(RegExp.$1) < 55) {
     // in these cases, address templates once
     var templateObjects = {};
     // but always return the same template
@@ -663,26 +673,31 @@ beforeNode // optional item/node to use as insertBefore delimiter
       }
     }
   }
-  if (currentStart > currentEnd) {
-    var pin = futureNodes[futureEnd + 1];
-    var place = pin != null ? get(pin, 0) : before;
-    while (futureStart <= futureEnd) {
-      var ch = futureNodes[futureStart++];
-      // ignore until I am sure the else could never happen.
-      // it might be a vDOM thing 'cause it never happens here.
-      /* istanbul ignore else */
-      if (ch != null) parentNode.insertBefore(get(ch, 1), place);
-    }
-  }
-  // ignore until I am sure the else could never happen.
-  // it might be a vDOM thing 'cause it never happens here.
-  /* istanbul ignore else */
-  else if (futureStart > futureEnd) {
-      while (currentStart <= currentEnd) {
-        var _ch = currentNodes[currentStart++];
-        if (_ch != null) parentNode.removeChild(get(_ch, -1));
+  if (currentStart <= currentEnd || futureStart <= futureEnd) {
+    if (currentStart > currentEnd) {
+      var pin = futureNodes[futureEnd + 1];
+      var place = pin == null ? before : get(pin, 0);
+      if (futureStart === futureEnd) {
+        parentNode.insertBefore(get(futureNodes[futureStart], 1), place);
+      } else {
+        var fragment = parentNode.ownerDocument.createDocumentFragment();
+        while (futureStart <= futureEnd) {
+          fragment.appendChild(get(futureNodes[futureStart++], 1));
+        }
+        parentNode.insertBefore(fragment, place);
+      }
+    } else {
+      if (currentNodes[currentStart] == null) currentStart++;
+      if (currentStart === currentEnd) {
+        parentNode.removeChild(get(currentNodes[currentStart], -1));
+      } else {
+        var range = parentNode.ownerDocument.createRange();
+        range.setStartBefore(get(currentNodes[currentStart], -1));
+        range.setEndAfter(get(currentNodes[currentEnd], -1));
+        range.deleteContents();
       }
     }
+  }
   return futureNodes;
 };
 
@@ -825,6 +840,22 @@ var findAttributes$1 = function findAttributes(node, paths, parts) {
   var len = remove.length;
   for (var _i = 0; _i < len; _i++) {
     node.removeAttributeNode(remove[_i]);
+  }
+
+  // This is a very specific Firefox/Safari issue
+  // but since it should be a not so common pattern,
+  // it's probably worth patching regardless.
+  // Basically, scripts created through strings are death.
+  // You need to create fresh new scripts instead.
+  // TODO: is there any other node that needs such nonsense ?
+  var nodeName = node.nodeName;
+  if (/^script$/i.test(nodeName)) {
+    var script = create(node, nodeName);
+    for (var _i2 = 0; _i2 < attributes.length; _i2++) {
+      script.setAttributeNode(attributes[_i2].cloneNode(true));
+    }
+    script.textContent = node.textContent;
+    node.parentNode.replaceChild(script, node);
   }
 };
 
@@ -1002,6 +1033,7 @@ var setAttribute = function setAttribute(node, name, original) {
                     owner = false;
                     node.removeAttributeNode(attribute);
                   }
+                  attribute.value = newValue;
                 } else {
                   attribute.value = newValue;
                   if (!owner) {
@@ -1162,12 +1194,20 @@ function update() {
 // no matter if these are attributes, text nodes, or regular one
 function createTemplate(template) {
   var paths = [];
-  var fragment = createFragment(this, template.join(UIDC));
+  var html = template.join(UIDC).replace(SC_RE, SC_PLACE);
+  var fragment = createFragment(this, html);
   Updates.find(fragment, paths, template.slice());
   var info = { fragment: fragment, paths: paths };
   templates.set(template, info);
   return info;
 }
+
+// some node could be special though, like a custom element
+// with a self closing tag, which should work through these changes.
+var SC_RE = selfClosing;
+var SC_PLACE = function SC_PLACE($0, $1, $2) {
+  return VOID_ELEMENTS.test($1) ? $0 : '<' + $1 + $2 + '></' + $1 + '>';
+};
 
 // all wires used per each context
 var wires = new WeakMap();
@@ -1281,7 +1321,7 @@ setup(content);
 // that "magically" understands what's the best
 // thing to do with passed arguments
 function hyper(HTML) {
-  return arguments.length < 2 ? HTML == null ? content('html') : typeof HTML === 'string' ? wire(null, HTML) : 'raw' in HTML ? content('html')(HTML) : 'nodeType' in HTML ? render.bind(HTML) : weakly(HTML, 'html') : ('raw' in HTML ? content('html') : wire).apply(null, arguments);
+  return arguments.length < 2 ? HTML == null ? content('html') : typeof HTML === 'string' ? hyper.wire(null, HTML) : 'raw' in HTML ? content('html')(HTML) : 'nodeType' in HTML ? hyper.bind(HTML) : weakly(HTML, 'html') : ('raw' in HTML ? content('html') : hyper.wire).apply(null, arguments);
 }
 
 var _fixBabelExtend = function (O) {

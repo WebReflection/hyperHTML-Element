@@ -6,14 +6,14 @@
   "module": "esm/index.js",
   "main": "cjs/index.js",
   "scripts": {
-    "bundle-cjs": "ascjs ./esm ./cjs && sed -i 's/hyperhtml\\/esm/hyperhtml\\/cjs/' cjs/index.js",
+    "bundle-cjs": "ascjs ./esm ./cjs && sed -i.bak 's/hyperhtml\\/esm/hyperhtml\\/cjs/' cjs/index.js && rm -f cjs/index.js.bak",
     "bundle-esm": "rollup --config esm.config.js && npm run fix-esm-export",
     "bundle-es5": "rollup --config es5.config.js && npm run fix-es5-export",
     "babel-test": "babel test/test.js > test/test.es5.js",
     "build": "npm run bundle-cjs && npm run bundle-esm && npm run bundle-es5 && npm run babel-test && npm run minify && npm run minify-es5 && npm run size && npm run size-es5 && npm test",
     "coveralls": "cat ./coverage/lcov.info | coveralls",
-    "fix-esm-export": "sed -i 's/return exports;/return exports.default;/' index.js",
-    "fix-es5-export": "sed -i 's/return exports;/return exports[\"default\"];/' es5.js",
+    "fix-esm-export": "sed -i.bak 's/return exports;/return exports.default;/' index.js && rm -f index.js.bak",
+    "fix-es5-export": "sed -i.bak 's/return exports;/return exports[\"default\"];/' es5.js && rm -f es5.js.bak",
     "minify": "uglifyjs index.js --comments=/^!/ --compress --mangle -o min.js",
     "minify-es5": "uglifyjs es5.js --comments=/^!/ --compress --mangle -o es5.min.js",
     "size": "echo $(tput bold)'Size for ES2015'$(tput sgr0); cat index.js | wc -c;cat min.js | wc -c;gzip -c min.js | wc -c",
@@ -55,6 +55,6 @@
     "uglify-es": "^3.0.26"
   },
   "dependencies": {
-    "hyperhtml": "^2.4.0"
+    "hyperhtml": "^2.5.8"
   }
 }

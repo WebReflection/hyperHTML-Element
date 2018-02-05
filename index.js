@@ -84,7 +84,7 @@ var Intent = {
   }
 };
 
-const global = document.defaultView;
+const G = document.defaultView;
 
 // Node.CONSTANTS
 // 'cause some engine has no global Node defined
@@ -94,6 +94,9 @@ const ELEMENT_NODE = 1;
 const TEXT_NODE = 3;
 const COMMENT_NODE = 8;
 const DOCUMENT_FRAGMENT_NODE = 11;
+
+// HTML related constants
+const VOID_ELEMENTS = /^area|base|br|col|embed|hr|img|input|keygen|link|menuitem|meta|param|source|track|wbr$/i;
 
 // SVG related constants
 const OWNER_SVG_ELEMENT = 'ownerSVGElement';
@@ -115,7 +118,7 @@ const UIDC = '<!--' + UID + '-->';
 // https://www.npmjs.com/package/poorlyfills
 
 // used to dispatch simple events
-let Event = global.Event;
+let Event = G.Event;
 try {
   new Event('Event');
 } catch(o_O) {
@@ -126,7 +129,7 @@ try {
   };
 }
 // used to store template literals
-const Map = global.Map || function Map() {
+const Map = G.Map || function Map() {
   const keys = [], values = [];
   return {
     get(obj) {
@@ -139,7 +142,7 @@ const Map = global.Map || function Map() {
 };
 
 // used to store wired content
-const WeakMap = global.WeakMap || function WeakMap() {
+const WeakMap = G.WeakMap || function WeakMap() {
   return {
     get(obj) { return obj[UID]; },
     set(obj, value) {
@@ -152,7 +155,7 @@ const WeakMap = global.WeakMap || function WeakMap() {
 };
 
 // used to store hyper.Components
-const WeakSet = global.WeakSet || function WeakSet() {
+const WeakSet = G.WeakSet || function WeakSet() {
   const wm = new WeakMap;
   return {
     add(obj) { wm.set(obj, true); },
@@ -174,6 +177,24 @@ const create = (node, type) => doc(node).createElement(type);
 const doc = node => node.ownerDocument || node;
 const fragment = node => doc(node).createDocumentFragment();
 const text = (node, text) => doc(node).createTextNode(text);
+
+// TODO:  I'd love to code-cover RegExp too here
+//        these are fundamental for this library
+
+const almostEverything = '[^ \\f\\n\\r\\t\\/>"\'=]+';
+const attrName = '[^\\S]+' + almostEverything;
+const tagName = '<([a-z]+[a-z0-9:_-]*)((?:';
+const attrPartials = '(?:=(?:\'.*?\'|".*?"|<.+?>|' + almostEverything + '))?)';
+
+const attrSeeker = new RegExp(
+  tagName + attrName + attrPartials + '+)([^\\S]*/?>)',
+  'gi'
+);
+
+const selfClosing = new RegExp(
+  tagName + attrName + attrPartials + '*)([^\\S]*/>)',
+  'gi'
+);
 
 const testFragment = fragment(document);
 
@@ -209,19 +230,9 @@ const append = hasAppend ?
     }
   };
 
-// remove comments parts from attributes to avoid issues
-// with either old browsers or SVG elements
-// export const cleanAttributes = html => html.replace(no, comments);
-const attrName = '[^\\S]+[^ \\f\\n\\r\\t\\/>"\'=]+';
-const no = new RegExp(
-  '(<[a-z]+[a-z0-9:_-]*)((?:' +
-    attrName +
-  '(?:=(?:\'.*?\'|".*?"|<.+?>|\\S+))?)+)([^\\S]*/?>)',
-  'gi'
-);
 const findAttributes = new RegExp('(' + attrName + '=)([\'"]?)' + UIDC + '\\2', 'gi');
 const comments = ($0, $1, $2, $3) =>
-  $1 + $2.replace(findAttributes, replaceAttributes) + $3;
+  '<' + $1 + $2.replace(findAttributes, replaceAttributes) + $3;
 const replaceAttributes = ($0, $1, $2) => $1 + ($2 || '"') + UID + ($2 || '"');
 
 // given a node and a generic HTML content,
@@ -231,7 +242,7 @@ const createFragment = (node, html) =>
   (OWNER_SVG_ELEMENT in node ?
     SVGFragment :
     HTMLFragment
-  )(node, html.replace(no, comments));
+  )(node, html.replace(attrSeeker, comments));
 
 // IE/Edge shenanigans proof cloneNode
 // it goes through all nodes manually
@@ -293,7 +304,7 @@ let TL = template => {
     template.propertyIsEnumerable('raw') ||
     (
       // Firefox < 55 has not standard implementation neither
-      /Firefox\/(\d+)/.test((global.navigator || {}).userAgent) &&
+      /Firefox\/(\d+)/.test((G.navigator || {}).userAgent) &&
       parseFloat(RegExp.$1) < 55
     )
   ) {
@@ -592,24 +603,32 @@ const domdiff = (
       }
     }
   }
-  if (currentStart > currentEnd) {
-    const pin = futureNodes[futureEnd + 1];
-    const place = pin != null ? get(pin, 0) : before;
-    while (futureStart <= futureEnd) {
-      const ch = futureNodes[futureStart++];
-      // ignore until I am sure the else could never happen.
-      // it might be a vDOM thing 'cause it never happens here.
-      /* istanbul ignore else */
-      if (ch != null) parentNode.insertBefore(get(ch, 1), place);
+  if (currentStart <= currentEnd || futureStart <= futureEnd) {
+    if (currentStart > currentEnd) {
+      const pin = futureNodes[futureEnd + 1];
+      const place = pin == null ? before : get(pin, 0);
+      if (futureStart === futureEnd) {
+        parentNode.insertBefore(get(futureNodes[futureStart], 1), place);
+      }
+      else {
+        const fragment = parentNode.ownerDocument.createDocumentFragment();
+        while (futureStart <= futureEnd) {
+          fragment.appendChild(get(futureNodes[futureStart++], 1));
+        }
+        parentNode.insertBefore(fragment, place);
+      }
     }
-  }
-  // ignore until I am sure the else could never happen.
-  // it might be a vDOM thing 'cause it never happens here.
-  /* istanbul ignore else */
-  else if (futureStart > futureEnd) {
-    while (currentStart <= currentEnd) {
-      const ch = currentNodes[currentStart++];
-      if (ch != null) parentNode.removeChild(get(ch, -1));
+    else {
+      if (currentNodes[currentStart] == null) currentStart++;
+      if (currentStart === currentEnd) {
+        parentNode.removeChild(get(currentNodes[currentStart], -1));
+      }
+      else {
+        const range = parentNode.ownerDocument.createRange();
+        range.setStartBefore(get(currentNodes[currentStart], -1));
+        range.setEndAfter(get(currentNodes[currentEnd], -1));
+        range.deleteContents();
+      }
     }
   }
   return futureNodes;
@@ -763,6 +782,22 @@ const findAttributes$1 = (node, paths, parts) => {
   const len = remove.length;
   for (let i = 0; i < len; i++) {
     node.removeAttributeNode(remove[i]);
+  }
+
+  // This is a very specific Firefox/Safari issue
+  // but since it should be a not so common pattern,
+  // it's probably worth patching regardless.
+  // Basically, scripts created through strings are death.
+  // You need to create fresh new scripts instead.
+  // TODO: is there any other node that needs such nonsense ?
+  const nodeName = node.nodeName;
+  if (/^script$/i.test(nodeName)) {
+    const script = create(node, nodeName);
+    for (let i = 0; i < attributes.length; i++) {
+      script.setAttributeNode(attributes[i].cloneNode(true));
+    }
+    script.textContent = node.textContent;
+    node.parentNode.replaceChild(script, node);
   }
 };
 
@@ -982,6 +1017,7 @@ const setAttribute = (node, name, original) => {
               owner = false;
               node.removeAttributeNode(attribute);
             }
+            attribute.value = newValue;
           } else {
             attribute.value = newValue;
             if (!owner) {
@@ -1143,12 +1179,20 @@ function update() {
 // no matter if these are attributes, text nodes, or regular one
 function createTemplate(template) {
   const paths = [];
-  const fragment = createFragment(this, template.join(UIDC));
+  const html = template.join(UIDC).replace(SC_RE, SC_PLACE);
+  const fragment = createFragment(this, html);
   Updates.find(fragment, paths, template.slice());
   const info = {fragment, paths};
   templates.set(template, info);
   return info;
 }
+
+// some node could be special though, like a custom element
+// with a self closing tag, which should work through these changes.
+const SC_RE = selfClosing;
+const SC_PLACE = ($0, $1, $2) => {
+  return VOID_ELEMENTS.test($1) ? $0 : ('<' + $1 + $2 + '></' + $1 + '>');
+};
 
 // all wires used per each context
 const wires = new WeakMap;
@@ -1265,17 +1309,17 @@ function hyper(HTML) {
     (HTML == null ?
       content('html') :
       (typeof HTML === 'string' ?
-        wire(null, HTML) :
+        hyper.wire(null, HTML) :
         ('raw' in HTML ?
           content('html')(HTML) :
           ('nodeType' in HTML ?
-            render.bind(HTML) :
+            hyper.bind(HTML) :
             weakly(HTML, 'html')
           )
         )
       )) :
     ('raw' in HTML ?
-      content('html') : wire
+      content('html') : hyper.wire
     ).apply(null, arguments);
 }
 
