@@ -5,6 +5,7 @@
   "browser": "min.js",
   "module": "esm/index.js",
   "main": "cjs/index.js",
+  "types": "index.d.ts",
   "scripts": {
     "bundle-cjs": "ascjs ./esm ./cjs && sed -i.bak 's/hyperhtml\\/esm/hyperhtml\\/cjs/' cjs/index.js && rm -f cjs/index.js.bak",
     "bundle-esm": "rollup --config esm.config.js && npm run fix-esm-export",
