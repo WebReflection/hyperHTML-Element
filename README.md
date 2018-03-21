@@ -6,7 +6,24 @@ An extensible class to define hyperHTML based Custom Elements.
 
 `npm install hyperhtml-element`
 
+#### hyperHTML included
+
+This class attaches all `hyperHTML` methods to itself,
+with the only exception of the `define` method,
+used in here to define Custom Elements instead.
+
+To have same [define functionality](https://viperhtml.js.org/hyperhtml/documentation/#api-3),
+please use `HyperHTMLElement.intent(...)` which provides exact same API.
+
+
+### Documentation
+
+You can find more info about this helper in [hyperHTML documentation](https://viperhtml.js.org/hyperhtml/documentation/#components-2) page.
+
+
+
 ### The Class
+
 ```js
 const HyperHTMLElement = require('hyperhtml-element');
 
@@ -92,7 +109,9 @@ class MyElement extends HyperHTMLElement {
 MyElement.define('my-element');
 ```
 
+
 ### Compatibility
+
 `HyperHTMLElement` is compatible with every mobile browser and IE11 or greater.
 
 There is a [native live test](https://webreflection.github.io/hyperHTML-Element/test/) page also [transpiled for ES5](https://webreflection.github.io/hyperHTML-Element/test/?es5) browsers.

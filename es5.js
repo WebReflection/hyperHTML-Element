@@ -1355,12 +1355,6 @@ var _init$ = { value: false };
 
 var defineProperty = Object.defineProperty;
 
-var extend = function extend(target, source) {
-  for (var key in source) {
-    target[key] = source[key];
-  }
-};
-
 var HyperHTMLElement = _fixBabelExtend(function (_HTMLElement) {
   inherits(HyperHTMLElement, _HTMLElement);
 
@@ -1390,9 +1384,13 @@ var HyperHTMLElement = _fixBabelExtend(function (_HTMLElement) {
     // currently a state is a shallow copy, like in Preact or other libraries.
     // after the state is updated, the render() method will be invoked.
     // ⚠️ do not ever call this.setState() inside this.render()
-    value: function setState(state) {
-      extend(this.state, typeof state === 'function' ? state.call(this, this.state) : state);
-      this.render();
+    value: function setState(state, render) {
+      var target = this.state;
+      var source = typeof state === 'function' ? state.call(this, target) : state;
+      for (var key in source) {
+        target[key] = source[key];
+      }if (render !== false) this.render();
+      return this;
     }
   }, {
     key: 'html',

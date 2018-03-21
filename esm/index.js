@@ -6,10 +6,6 @@ const _init$ = {value: false};
 
 const defineProperty = Object.defineProperty;
 
-const extend = (target, source) => {
-  for (const key in source) target[key] = source[key];
-};
-
 class HyperHTMLElement extends HTMLElement {
 
   // define a custom-element in the CustomElementsRegistry
@@ -214,13 +210,12 @@ class HyperHTMLElement extends HTMLElement {
   // currently a state is a shallow copy, like in Preact or other libraries.
   // after the state is updated, the render() method will be invoked.
   // ⚠️ do not ever call this.setState() inside this.render()
-  setState(state) {
-    extend(
-      this.state,
-      typeof state === 'function' ?
-        state.call(this, this.state) : state
-    );
-    this.render();
+  setState(state, render) {
+    const target = this.state;
+    const source = typeof state === 'function' ? state.call(this, target) : state;
+    for (const key in source) target[key] = source[key];
+    if (render !== false) this.render();
+    return this;
   }
 
 };

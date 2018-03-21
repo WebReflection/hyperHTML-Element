@@ -250,7 +250,7 @@ class StateHandler extends HyperHTMLElement {
     return {a: 1};
   }
   updateState(state) {
-    this.setState(state);
+    this.setState(state, false).setState(state);
   }
 }
 
