@@ -115,3 +115,17 @@ MyElement.define('my-element');
 `HyperHTMLElement` is compatible with every mobile browser and IE11 or greater.
 
 There is a [native live test](https://webreflection.github.io/hyperHTML-Element/test/) page also [transpiled for ES5](https://webreflection.github.io/hyperHTML-Element/test/?es5) browsers.
+
+
+### About created()
+
+Due to both [Chrome](https://bugs.chromium.org/p/chromium/issues/detail?id=821831) and
+[WebKit](https://bugs.webkit.org/show_bug.cgi?id=183931) bug,
+the `created()` callback might be triggered unpredictably if a generic Custom Element
+is defined *before* the current page load and one instance of it is already live.
+
+If you'd like to have a more predictable bootstrap on create, being able to access children or populate content,
+I strongly suggest you to use `defer` attributes in all your Custom Elements related scripts.
+
+This will grant definition right before the `DOMContentLoaded` event triggers,
+and each live component would be properly upgraded.
