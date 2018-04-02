@@ -1,89 +1,6 @@
 var HyperHTMLElement = (function (exports) {
 'use strict';
 
-// hyperHTML.Component is a very basic class
-// able to create Custom Elements like components
-// including the ability to listen to connect/disconnect
-// events via onconnect/ondisconnect attributes
-function Component() {}
-
-// components will lazily define html or svg properties
-// as soon as these are invoked within the .render() method
-// Such render() method is not provided by the base class
-// but it must be available through the Component extend.
-function setup(content) {
-  Object.defineProperties(
-    Component.prototype,
-    {
-      handleEvent: {value(e) {
-        const ct = e.currentTarget;
-        this[
-          ('getAttribute' in ct && ct.getAttribute('data-call')) ||
-          ('on' + e.type)
-        ](e);
-      }},
-      html: lazyGetter('html', content),
-      svg: lazyGetter('svg', content),
-      state: lazyGetter('state', function () { return this.defaultState; }),
-      defaultState: {get() { return {}; }},
-      setState: {value(state) {
-        const target = this.state;
-        const source = typeof state === 'function' ? state.call(this, target) : state;
-        for (const key in source) target[key] = source[key];
-        this.render();
-      }}
-    }
-  );
-}
-
-// instead of a secret key I could've used a WeakMap
-// However, attaching a property directly will result
-// into better performance with thousands of components
-// hanging around, and less memory pressure caused by the WeakMap
-const lazyGetter = (type, fn) => {
-  const secret = '_' + type + '$';
-  return {
-    get() {
-      return this[secret] || (this[type] = fn.call(this, type));
-    },
-    set(value) {
-      Object.defineProperty(this, secret, {configurable: true, value});
-    }
-  };
-};
-
-const intents = {};
-const keys = [];
-const hasOwnProperty = intents.hasOwnProperty;
-
-let length = 0;
-
-var Intent = {
-
-  // hyperHTML.define('intent', (object, update) => {...})
-  // can be used to define a third parts update mechanism
-  // when every other known mechanism failed.
-  // hyper.define('user', info => info.name);
-  // hyper(node)`<p>${{user}}</p>`;
-  define: (intent, callback) => {
-    if (!(intent in intents)) {
-      length = keys.push(intent);
-    }
-    intents[intent] = callback;
-  },
-
-  // this method is used internally as last resort
-  // to retrieve a value out of an object
-  invoke: (object, callback) => {
-    for (let i = 0; i < length; i++) {
-      let key = keys[i];
-      if (hasOwnProperty.call(object, key)) {
-        return intents[key](object[key], callback);
-      }
-    }
-  }
-};
-
 const G = document.defaultView;
 
 // Node.CONSTANTS
@@ -172,6 +89,130 @@ const trim = UID.trim || function () {
   return this.replace(/^\s+|\s+$/g, '');
 };
 
+// hyperHTML.Component is a very basic class
+// able to create Custom Elements like components
+// including the ability to listen to connect/disconnect
+// events via onconnect/ondisconnect attributes
+// Components can be created imperatively or declaratively.
+// The main difference is that declared components
+// will not automatically render on setState(...)
+// to simplify state handling on render.
+function Component() {}
+
+// components will lazily define html or svg properties
+// as soon as these are invoked within the .render() method
+// Such render() method is not provided by the base class
+// but it must be available through the Component extend.
+// Declared components could implement a
+// render(props) method too and use props as needed.
+function setup(content) {
+  const children = new WeakMap;
+  const create = Object.create;
+  const createEntry = (wm, id, component) => {
+    wm.set(id, component);
+    return component;
+  };
+  const get = (Class, info, id) => {
+    switch (typeof id) {
+      case 'object':
+      case 'function':
+        const wm = info.w || (info.w = new WeakMap);
+        return wm.get(id) || createEntry(wm, id, new Class);
+      default:
+        const sm = info.p || (info.p = create(null));
+        return sm[id] || (sm[id] = new Class);
+    }
+  };
+  const set = context => {
+    const info = {w: null, p: null};
+    children.set(context, info);
+    return info;
+  };
+  Object.defineProperties(
+    Component,
+    {
+      for: {
+        configurable: true,
+        value(context, id) {
+          const info = children.get(context) || set(context);
+          return get(this, info, id == null ? 'default' : id);
+        }
+      }
+    }
+  );
+  Object.defineProperties(
+    Component.prototype,
+    {
+      handleEvent: {value(e) {
+        const ct = e.currentTarget;
+        this[
+          ('getAttribute' in ct && ct.getAttribute('data-call')) ||
+          ('on' + e.type)
+        ](e);
+      }},
+      html: lazyGetter('html', content),
+      svg: lazyGetter('svg', content),
+      state: lazyGetter('state', function () { return this.defaultState; }),
+      defaultState: {get() { return {}; }},
+      setState: {value(state, render) {
+        const target = this.state;
+        const source = typeof state === 'function' ? state.call(this, target) : state;
+        for (const key in source) target[key] = source[key];
+        if (render !== false) this.render();
+        return this;
+      }}
+    }
+  );
+}
+
+// instead of a secret key I could've used a WeakMap
+// However, attaching a property directly will result
+// into better performance with thousands of components
+// hanging around, and less memory pressure caused by the WeakMap
+const lazyGetter = (type, fn) => {
+  const secret = '_' + type + '$';
+  return {
+    get() {
+      return this[secret] || (this[type] = fn.call(this, type));
+    },
+    set(value) {
+      Object.defineProperty(this, secret, {configurable: true, value});
+    }
+  };
+};
+
+const intents = {};
+const keys = [];
+const hasOwnProperty = intents.hasOwnProperty;
+
+let length = 0;
+
+var Intent = {
+
+  // hyperHTML.define('intent', (object, update) => {...})
+  // can be used to define a third parts update mechanism
+  // when every other known mechanism failed.
+  // hyper.define('user', info => info.name);
+  // hyper(node)`<p>${{user}}</p>`;
+  define: (intent, callback) => {
+    if (!(intent in intents)) {
+      length = keys.push(intent);
+    }
+    intents[intent] = callback;
+  },
+
+  // this method is used internally as last resort
+  // to retrieve a value out of an object
+  invoke: (object, callback) => {
+    for (let i = 0; i < length; i++) {
+      let key = keys[i];
+      if (hasOwnProperty.call(object, key)) {
+        return intents[key](object[key], callback);
+      }
+    }
+  }
+};
+
 // these are tiny helpers to simplify most common operations needed here
 const create = (node, type) => doc(node).createElement(type);
 const doc = node => node.ownerDocument || node;
@@ -181,19 +222,20 @@ const text = (node, text) => doc(node).createTextNode(text);
 // TODO:  I'd love to code-cover RegExp too here
 //        these are fundamental for this library
 
-const almostEverything = '[^ \\f\\n\\r\\t\\/>"\'=]+';
-const attrName = '[^\\S]+' + almostEverything;
-const tagName = '<([a-z]+[a-z0-9:_-]*)((?:';
-const attrPartials = '(?:=(?:\'.*?\'|".*?"|<.+?>|' + almostEverything + '))?)';
+const spaces = ' \\f\\n\\r\\t';
+const almostEverything = '[^ ' + spaces + '\\/>"\'=]+';
+const attrName = '[ ' + spaces + ']+' + almostEverything;
+const tagName = '<([A-Za-z]+[A-Za-z0-9:_-]*)((?:';
+const attrPartials = '(?:=(?:\'[^\']*?\'|"[^"]*?"|<[^>]*?>|' + almostEverything + '))?)';
 
 const attrSeeker = new RegExp(
-  tagName + attrName + attrPartials + '+)([^\\S]*/?>)',
-  'gi'
+  tagName + attrName + attrPartials + '+)([ ' + spaces + ']*/?>)',
+  'g'
 );
 
 const selfClosing = new RegExp(
-  tagName + attrName + attrPartials + '*)([^\\S]*/>)',
-  'gi'
+  tagName + attrName + attrPartials + '*)([ ' + spaces + ']*/>)',
+  'g'
 );
 
 const testFragment = fragment(document);
@@ -1036,7 +1078,8 @@ const setAttribute = (node, name, original) => {
 // different from text there but it's worth checking
 // for possible defined intents.
 const setTextContent = node => {
-  let oldValue;
+  // avoid hyper comments inside textarea/style when value is undefined
+  let oldValue = '';
   const textContent = value => {
     if (oldValue !== value) {
       oldValue = value;
@@ -1095,12 +1138,12 @@ function observe() {
   const dispatchTarget = (node, event) => {
     if (components.has(node)) {
       node.dispatchEvent(event);
-    } else {
-      const children = node.children;
-      const length = children.length;
-      for (let i = 0; i < length; i++) {
-        dispatchTarget(children[i], event);
-      }
+    }
+
+    const children = node.children;
+    const length = children.length;
+    for (let i = 0; i < length; i++) {
+      dispatchTarget(children[i], event);
     }
   };
 
@@ -1325,8 +1368,6 @@ function hyper(HTML) {
 
 /*! (C) 2017 Andrea Giammarchi - ISC Style License */
 
-const _init$ = {value: false};
-
 const defineProperty = Object.defineProperty;
 
 class HyperHTMLElement extends HTMLElement {
@@ -1360,11 +1401,11 @@ class HyperHTMLElement extends HTMLElement {
     const onChanged = proto.attributeChangedCallback;
     const hasChange = !!onChanged;
 
-    // created() {} is the entry point to do whatever you want.
-    // Once the node is live and upgraded as Custom Element.
-    // This method grants to be triggered at the right time,
-    // which is always once, and right before either
-    // attributeChangedCallback or connectedCallback
+    // created() {} is an initializer method that grants
+    // the node is fully known to the browser.
+    // It is ensured to run either after DOMContentLoaded,
+    // or once there is a next sibling (stream-friendly) so that
+    // you have full access to element attributes and/or childNodes.
     const created = proto.created;
     if (created) {
       // used to ensure create() is called once and once only
@@ -1388,7 +1429,7 @@ class HyperHTMLElement extends HTMLElement {
           configurable: true,
           value(name, prev, curr) {
             if (this._init$) {
-              created.call(defineProperty(this, '_init$', _init$));
+              checkReady.call(this, created);
             }
             // ensure setting same value twice
             // won't trigger twice attributeChangedCallback
@@ -1411,7 +1452,7 @@ class HyperHTMLElement extends HTMLElement {
           configurable: true,
           value() {
             if (this._init$) {
-              created.call(defineProperty(this, '_init$', _init$));
+              checkReady.call(this, created);
             }
             if (hasConnect) {
               onConnected.apply(this, arguments);
@@ -1549,6 +1590,44 @@ HyperHTMLElement.bind = bind;
 HyperHTMLElement.intent = define;
 HyperHTMLElement.wire = wire;
 HyperHTMLElement.hyper = hyper;
+
+// ------------------------------//
+// DOMContentLoaded VS created() //
+// ------------------------------//
+const dom = {
+  handleEvent: function (e) {
+    if (dom.ready) {
+      document.removeEventListener(e.type, dom, false);
+      dom.list.splice(0).forEach(function (fn) { fn(); });
+    }
+  },
+  get ready() {
+    return document.readyState === 'complete';
+  },
+  list: []
+};
+
+if (!dom.ready) {
+  document.addEventListener('DOMContentLoaded', dom, false);
+}
+
+function checkReady(created) {
+  if (dom.ready || isReady.call(this, created)) {
+    if (this._init$) {
+      created.call(defineProperty(this, '_init$', {value: false}));
+    }
+  } else {
+    dom.list.push(checkReady.bind(this, created));
+  }
+}
+
+function isReady(created) {
+  let el = this;
+  do { if (el.nextSibling) return true; }
+  while (el = el.parentNode);
+  setTimeout(checkReady.bind(this, created));
+  return false;
+}
 
 exports['default'] = HyperHTMLElement;
 

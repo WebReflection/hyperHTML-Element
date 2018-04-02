@@ -3,8 +3,6 @@
 
 const {Component, bind, define, hyper, wire} = require('hyperhtml/cjs');
 
-const _init$ = {value: false};
-
 const defineProperty = Object.defineProperty;
 
 class HyperHTMLElement extends HTMLElement {
@@ -38,11 +36,11 @@ class HyperHTMLElement extends HTMLElement {
     const onChanged = proto.attributeChangedCallback;
     const hasChange = !!onChanged;
 
-    // created() {} is the entry point to do whatever you want.
-    // Once the node is live and upgraded as Custom Element.
-    // This method grants to be triggered at the right time,
-    // which is always once, and right before either
-    // attributeChangedCallback or connectedCallback
+    // created() {} is an initializer method that grants
+    // the node is fully known to the browser.
+    // It is ensured to run either after DOMContentLoaded,
+    // or once there is a next sibling (stream-friendly) so that
+    // you have full access to element attributes and/or childNodes.
     const created = proto.created;
     if (created) {
       // used to ensure create() is called once and once only
@@ -66,7 +64,7 @@ class HyperHTMLElement extends HTMLElement {
           configurable: true,
           value(name, prev, curr) {
             if (this._init$) {
-              created.call(defineProperty(this, '_init$', _init$));
+              checkReady.call(this, created);
             }
             // ensure setting same value twice
             // won't trigger twice attributeChangedCallback
@@ -89,7 +87,7 @@ class HyperHTMLElement extends HTMLElement {
           configurable: true,
           value() {
             if (this._init$) {
-              created.call(defineProperty(this, '_init$', _init$));
+              checkReady.call(this, created);
             }
             if (hasConnect) {
               onConnected.apply(this, arguments);
@@ -229,3 +227,41 @@ HyperHTMLElement.wire = wire;
 HyperHTMLElement.hyper = hyper;
 
 Object.defineProperty(exports, '__esModule', {value: true}).default = HyperHTMLElement;
+
+// ------------------------------//
+// DOMContentLoaded VS created() //
+// ------------------------------//
+const dom = {
+  handleEvent: function (e) {
+    if (dom.ready) {
+      document.removeEventListener(e.type, dom, false);
+      dom.list.splice(0).forEach(function (fn) { fn(); });
+    }
+  },
+  get ready() {
+    return document.readyState === 'complete';
+  },
+  list: []
+};
+
+if (!dom.ready) {
+  document.addEventListener('DOMContentLoaded', dom, false);
+}
+
+function checkReady(created) {
+  if (dom.ready || isReady.call(this, created)) {
+    if (this._init$) {
+      created.call(defineProperty(this, '_init$', {value: false}));
+    }
+  } else {
+    dom.list.push(checkReady.bind(this, created));
+  }
+}
+
+function isReady(created) {
+  let el = this;
+  do { if (el.nextSibling) return true; }
+  while (el = el.parentNode);
+  setTimeout(checkReady.bind(this, created));
+  return false;
+}
