@@ -1,94 +1,6 @@
 var HyperHTMLElement = (function (exports) {
 'use strict';
 
-// hyperHTML.Component is a very basic class
-// able to create Custom Elements like components
-// including the ability to listen to connect/disconnect
-// events via onconnect/ondisconnect attributes
-function Component() {}
-
-// components will lazily define html or svg properties
-// as soon as these are invoked within the .render() method
-// Such render() method is not provided by the base class
-// but it must be available through the Component extend.
-function setup(content) {
-  Object.defineProperties(Component.prototype, {
-    handleEvent: {
-      value: function value(e) {
-        var ct = e.currentTarget;
-        this['getAttribute' in ct && ct.getAttribute('data-call') || 'on' + e.type](e);
-      }
-    },
-    html: lazyGetter('html', content),
-    svg: lazyGetter('svg', content),
-    state: lazyGetter('state', function () {
-      return this.defaultState;
-    }),
-    defaultState: {
-      get: function get() {
-        return {};
-      }
-    },
-    setState: {
-      value: function value(state) {
-        var target = this.state;
-        var source = typeof state === 'function' ? state.call(this, target) : state;
-        for (var key in source) {
-          target[key] = source[key];
-        }this.render();
-      }
-    }
-  });
-}
-
-// instead of a secret key I could've used a WeakMap
-// However, attaching a property directly will result
-// into better performance with thousands of components
-// hanging around, and less memory pressure caused by the WeakMap
-var lazyGetter = function lazyGetter(type, fn) {
-  var secret = '_' + type + '$';
-  return {
-    get: function get() {
-      return this[secret] || (this[type] = fn.call(this, type));
-    },
-    set: function set(value) {
-      Object.defineProperty(this, secret, { configurable: true, value: value });
-    }
-  };
-};
-
-var intents = {};
-var keys = [];
-var hasOwnProperty = intents.hasOwnProperty;
-
-var length = 0;
-
-var Intent = {
-
-  // hyperHTML.define('intent', (object, update) => {...})
-  // can be used to define a third parts update mechanism
-  // when every other known mechanism failed.
-  // hyper.define('user', info => info.name);
-  // hyper(node)`<p>${{user}}</p>`;
-  define: function define(intent, callback) {
-    if (!(intent in intents)) {
-      length = keys.push(intent);
-    }
-    intents[intent] = callback;
-  },
-
-  // this method is used internally as last resort
-  // to retrieve a value out of an object
-  invoke: function invoke(object, callback) {
-    for (var i = 0; i < length; i++) {
-      var key = keys[i];
-      if (hasOwnProperty.call(object, key)) {
-        return intents[key](object[key], callback);
-      }
-    }
-  }
-};
-
 var G = document.defaultView;
 
 // Node.CONSTANTS
@@ -186,6 +98,214 @@ var trim = UID.trim || function () {
   return this.replace(/^\s+|\s+$/g, '');
 };
 
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) {
+  return typeof obj;
+} : function (obj) {
+  return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj;
+};
+
+
+
+
+
+
+
+
+
+
+
+var classCallCheck = function (instance, Constructor) {
+  if (!(instance instanceof Constructor)) {
+    throw new TypeError("Cannot call a class as a function");
+  }
+};
+
+var createClass = function () {
+  function defineProperties(target, props) {
+    for (var i = 0; i < props.length; i++) {
+      var descriptor = props[i];
+      descriptor.enumerable = descriptor.enumerable || false;
+      descriptor.configurable = true;
+      if ("value" in descriptor) descriptor.writable = true;
+      Object.defineProperty(target, descriptor.key, descriptor);
+    }
+  }
+
+  return function (Constructor, protoProps, staticProps) {
+    if (protoProps) defineProperties(Constructor.prototype, protoProps);
+    if (staticProps) defineProperties(Constructor, staticProps);
+    return Constructor;
+  };
+}();
+
+
+
+
+
+
+
+
+
+var inherits = function (subClass, superClass) {
+  if (typeof superClass !== "function" && superClass !== null) {
+    throw new TypeError("Super expression must either be null or a function, not " + typeof superClass);
+  }
+
+  subClass.prototype = Object.create(superClass && superClass.prototype, {
+    constructor: {
+      value: subClass,
+      enumerable: false,
+      writable: true,
+      configurable: true
+    }
+  });
+  if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass;
+};
+
+
+
+
+
+
+
+
+
+
+
+var possibleConstructorReturn = function (self, call) {
+  if (!self) {
+    throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
+  }
+
+  return call && (typeof call === "object" || typeof call === "function") ? call : self;
+};
+
+// hyperHTML.Component is a very basic class
+// able to create Custom Elements like components
+// including the ability to listen to connect/disconnect
+// events via onconnect/ondisconnect attributes
+// Components can be created imperatively or declaratively.
+// The main difference is that declared components
+// will not automatically render on setState(...)
+// to simplify state handling on render.
+function Component() {}
+
+// components will lazily define html or svg properties
+// as soon as these are invoked within the .render() method
+// Such render() method is not provided by the base class
+// but it must be available through the Component extend.
+// Declared components could implement a
+// render(props) method too and use props as needed.
+function setup(content) {
+  var children = new WeakMap();
+  var create = Object.create;
+  var createEntry = function createEntry(wm, id, component) {
+    wm.set(id, component);
+    return component;
+  };
+  var get$$1 = function get$$1(Class, info, id) {
+    switch (typeof id === 'undefined' ? 'undefined' : _typeof(id)) {
+      case 'object':
+      case 'function':
+        var wm = info.w || (info.w = new WeakMap());
+        return wm.get(id) || createEntry(wm, id, new Class());
+      default:
+        var sm = info.p || (info.p = create(null));
+        return sm[id] || (sm[id] = new Class());
+    }
+  };
+  var set$$1 = function set$$1(context) {
+    var info = { w: null, p: null };
+    children.set(context, info);
+    return info;
+  };
+  Object.defineProperties(Component, {
+    for: {
+      configurable: true,
+      value: function value(context, id) {
+        var info = children.get(context) || set$$1(context);
+        return get$$1(this, info, id == null ? 'default' : id);
+      }
+    }
+  });
+  Object.defineProperties(Component.prototype, {
+    handleEvent: {
+      value: function value(e) {
+        var ct = e.currentTarget;
+        this['getAttribute' in ct && ct.getAttribute('data-call') || 'on' + e.type](e);
+      }
+    },
+    html: lazyGetter('html', content),
+    svg: lazyGetter('svg', content),
+    state: lazyGetter('state', function () {
+      return this.defaultState;
+    }),
+    defaultState: {
+      get: function get$$1() {
+        return {};
+      }
+    },
+    setState: {
+      value: function value(state, render) {
+        var target = this.state;
+        var source = typeof state === 'function' ? state.call(this, target) : state;
+        for (var key in source) {
+          target[key] = source[key];
+        }if (render !== false) this.render();
+        return this;
+      }
+    }
+  });
+}
+
+// instead of a secret key I could've used a WeakMap
+// However, attaching a property directly will result
+// into better performance with thousands of components
+// hanging around, and less memory pressure caused by the WeakMap
+var lazyGetter = function lazyGetter(type, fn) {
+  var secret = '_' + type + '$';
+  return {
+    get: function get$$1() {
+      return this[secret] || (this[type] = fn.call(this, type));
+    },
+    set: function set$$1(value) {
+      Object.defineProperty(this, secret, { configurable: true, value: value });
+    }
+  };
+};
+
+var intents = {};
+var keys = [];
+var hasOwnProperty = intents.hasOwnProperty;
+
+var length = 0;
+
+var Intent = {
+
+  // hyperHTML.define('intent', (object, update) => {...})
+  // can be used to define a third parts update mechanism
+  // when every other known mechanism failed.
+  // hyper.define('user', info => info.name);
+  // hyper(node)`<p>${{user}}</p>`;
+  define: function define(intent, callback) {
+    if (!(intent in intents)) {
+      length = keys.push(intent);
+    }
+    intents[intent] = callback;
+  },
+
+  // this method is used internally as last resort
+  // to retrieve a value out of an object
+  invoke: function invoke(object, callback) {
+    for (var i = 0; i < length; i++) {
+      var key = keys[i];
+      if (hasOwnProperty.call(object, key)) {
+        return intents[key](object[key], callback);
+      }
+    }
+  }
+};
+
 // these are tiny helpers to simplify most common operations needed here
 var create = function create(node, type) {
   return doc(node).createElement(type);
@@ -203,14 +323,15 @@ var text = function text(node, _text) {
 // TODO:  I'd love to code-cover RegExp too here
 //        these are fundamental for this library
 
-var almostEverything = '[^ \\f\\n\\r\\t\\/>"\'=]+';
-var attrName = '[^\\S]+' + almostEverything;
-var tagName = '<([a-z]+[a-z0-9:_-]*)((?:';
-var attrPartials = '(?:=(?:\'.*?\'|".*?"|<.+?>|' + almostEverything + '))?)';
+var spaces = ' \\f\\n\\r\\t';
+var almostEverything = '[^ ' + spaces + '\\/>"\'=]+';
+var attrName = '[ ' + spaces + ']+' + almostEverything;
+var tagName = '<([A-Za-z]+[A-Za-z0-9:_-]*)((?:';
+var attrPartials = '(?:=(?:\'[^\']*?\'|"[^"]*?"|<[^>]*?>|' + almostEverything + '))?)';
 
-var attrSeeker = new RegExp(tagName + attrName + attrPartials + '+)([^\\S]*/?>)', 'gi');
+var attrSeeker = new RegExp(tagName + attrName + attrPartials + '+)([ ' + spaces + ']*/?>)', 'g');
 
-var selfClosing = new RegExp(tagName + attrName + attrPartials + '*)([^\\S]*/>)', 'gi');
+var selfClosing = new RegExp(tagName + attrName + attrPartials + '*)([ ' + spaces + ']*/>)', 'g');
 
 var testFragment = fragment(document);
 
@@ -454,88 +575,6 @@ var Path = {
     }
     return node;
   }
-};
-
-var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) {
-  return typeof obj;
-} : function (obj) {
-  return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj;
-};
-
-
-
-
-
-
-
-
-
-
-
-var classCallCheck = function (instance, Constructor) {
-  if (!(instance instanceof Constructor)) {
-    throw new TypeError("Cannot call a class as a function");
-  }
-};
-
-var createClass = function () {
-  function defineProperties(target, props) {
-    for (var i = 0; i < props.length; i++) {
-      var descriptor = props[i];
-      descriptor.enumerable = descriptor.enumerable || false;
-      descriptor.configurable = true;
-      if ("value" in descriptor) descriptor.writable = true;
-      Object.defineProperty(target, descriptor.key, descriptor);
-    }
-  }
-
-  return function (Constructor, protoProps, staticProps) {
-    if (protoProps) defineProperties(Constructor.prototype, protoProps);
-    if (staticProps) defineProperties(Constructor, staticProps);
-    return Constructor;
-  };
-}();
-
-
-
-
-
-
-
-
-
-var inherits = function (subClass, superClass) {
-  if (typeof superClass !== "function" && superClass !== null) {
-    throw new TypeError("Super expression must either be null or a function, not " + typeof superClass);
-  }
-
-  subClass.prototype = Object.create(superClass && superClass.prototype, {
-    constructor: {
-      value: subClass,
-      enumerable: false,
-      writable: true,
-      configurable: true
-    }
-  });
-  if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass;
-};
-
-
-
-
-
-
-
-
-
-
-
-var possibleConstructorReturn = function (self, call) {
-  if (!self) {
-    throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
-  }
-
-  return call && (typeof call === "object" || typeof call === "function") ? call : self;
 };
 
 // from https://github.com/developit/preact/blob/33fc697ac11762a1cb6e71e9847670d047af7ce5/src/constants.js
@@ -1052,7 +1091,8 @@ var setAttribute = function setAttribute(node, name, original) {
 // different from text there but it's worth checking
 // for possible defined intents.
 var setTextContent = function setTextContent(node) {
-  var oldValue = void 0;
+  // avoid hyper comments inside textarea/style when value is undefined
+  var oldValue = '';
   var textContent = function textContent(value) {
     if (oldValue !== value) {
       oldValue = value;
@@ -1111,12 +1151,12 @@ function observe() {
   var dispatchTarget = function dispatchTarget(node, event) {
     if (components.has(node)) {
       node.dispatchEvent(event);
-    } else {
-      var children = node.children;
-      var length = children.length;
-      for (var i = 0; i < length; i++) {
-        dispatchTarget(children[i], event);
-      }
+    }
+
+    var children = node.children;
+    var length = children.length;
+    for (var i = 0; i < length; i++) {
+      dispatchTarget(children[i], event);
     }
   };
 
@@ -1351,8 +1391,6 @@ var _fixBabelExtend = function (O) {
 
 /*! (C) 2017 Andrea Giammarchi - ISC Style License */
 
-var _init$ = { value: false };
-
 var defineProperty = Object.defineProperty;
 
 var HyperHTMLElement = _fixBabelExtend(function (_HTMLElement) {
@@ -1472,11 +1510,11 @@ var HyperHTMLElement = _fixBabelExtend(function (_HTMLElement) {
       var onChanged = proto.attributeChangedCallback;
       var hasChange = !!onChanged;
 
-      // created() {} is the entry point to do whatever you want.
-      // Once the node is live and upgraded as Custom Element.
-      // This method grants to be triggered at the right time,
-      // which is always once, and right before either
-      // attributeChangedCallback or connectedCallback
+      // created() {} is an initializer method that grants
+      // the node is fully known to the browser.
+      // It is ensured to run either after DOMContentLoaded,
+      // or once there is a next sibling (stream-friendly) so that
+      // you have full access to element attributes and/or childNodes.
       var created = proto.created;
       if (created) {
         // used to ensure create() is called once and once only
@@ -1493,7 +1531,7 @@ var HyperHTMLElement = _fixBabelExtend(function (_HTMLElement) {
           configurable: true,
           value: function value(name, prev, curr) {
             if (this._init$) {
-              created.call(defineProperty(this, '_init$', _init$));
+              checkReady.call(this, created);
             }
             // ensure setting same value twice
             // won't trigger twice attributeChangedCallback
@@ -1512,7 +1550,7 @@ var HyperHTMLElement = _fixBabelExtend(function (_HTMLElement) {
           configurable: true,
           value: function value() {
             if (this._init$) {
-              created.call(defineProperty(this, '_init$', _init$));
+              checkReady.call(this, created);
             }
             if (hasConnect) {
               onConnected.apply(this, arguments);
@@ -1585,6 +1623,47 @@ HyperHTMLElement.bind = bind;
 HyperHTMLElement.intent = define;
 HyperHTMLElement.wire = wire;
 HyperHTMLElement.hyper = hyper;
+
+// ------------------------------//
+// DOMContentLoaded VS created() //
+// ------------------------------//
+var dom = {
+  handleEvent: function handleEvent(e) {
+    if (dom.ready) {
+      document.removeEventListener(e.type, dom, false);
+      dom.list.splice(0).forEach(function (fn) {
+        fn();
+      });
+    }
+  },
+  get ready() {
+    return document.readyState === 'complete';
+  },
+  list: []
+};
+
+if (!dom.ready) {
+  document.addEventListener('DOMContentLoaded', dom, false);
+}
+
+function checkReady(created) {
+  if (dom.ready || isReady.call(this, created)) {
+    if (this._init$) {
+      created.call(defineProperty(this, '_init$', { value: false }));
+    }
+  } else {
+    dom.list.push(checkReady.bind(this, created));
+  }
+}
+
+function isReady(created) {
+  var el = this;
+  do {
+    if (el.nextSibling) return true;
+  } while (el = el.parentNode);
+  setTimeout(checkReady.bind(this, created));
+  return false;
+}
 
 exports['default'] = HyperHTMLElement;
 
