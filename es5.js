@@ -190,28 +190,26 @@ var possibleConstructorReturn = function (self, call) {
 // to simplify state handling on render.
 function Component() {}
 
-// components will lazily define html or svg properties
-// as soon as these are invoked within the .render() method
-// Such render() method is not provided by the base class
-// but it must be available through the Component extend.
-// Declared components could implement a
-// render(props) method too and use props as needed.
+// Component is lazily setup because it needs
+// wire mechanism as lazy content
 function setup(content) {
+  // there are various weakly referenced variables in here
+  // and mostly are to use Component.for(...) static method.
   var children = new WeakMap();
   var create = Object.create;
   var createEntry = function createEntry(wm, id, component) {
     wm.set(id, component);
     return component;
   };
-  var get$$1 = function get$$1(Class, info, id) {
+  var get$$1 = function get$$1(Class, info, context, id) {
     switch (typeof id === 'undefined' ? 'undefined' : _typeof(id)) {
       case 'object':
       case 'function':
         var wm = info.w || (info.w = new WeakMap());
-        return wm.get(id) || createEntry(wm, id, new Class());
+        return wm.get(id) || createEntry(wm, id, new Class(context));
       default:
         var sm = info.p || (info.p = create(null));
-        return sm[id] || (sm[id] = new Class());
+        return sm[id] || (sm[id] = new Class(context));
     }
   };
   var set$$1 = function set$$1(context) {
@@ -219,32 +217,49 @@ function setup(content) {
     children.set(context, info);
     return info;
   };
+  // The Component Class
   Object.defineProperties(Component, {
+    // Component.for(context[, id]) is a convenient way
+    // to automatically relate data/context to children components
+    // If not created yet, the new Component(context) is weakly stored
+    // and after that same instance would always be returned.
     for: {
       configurable: true,
       value: function value(context, id) {
         var info = children.get(context) || set$$1(context);
-        return get$$1(this, info, id == null ? 'default' : id);
+        return get$$1(this, info, context, id == null ? 'default' : id);
       }
     }
   });
   Object.defineProperties(Component.prototype, {
+    // all events are handled with the component as context
     handleEvent: {
       value: function value(e) {
         var ct = e.currentTarget;
         this['getAttribute' in ct && ct.getAttribute('data-call') || 'on' + e.type](e);
       }
     },
+    // components will lazily define html or svg properties
+    // as soon as these are invoked within the .render() method
+    // Such render() method is not provided by the base class
+    // but it must be available through the Component extend.
+    // Declared components could implement a
+    // render(props) method too and use props as needed.
     html: lazyGetter('html', content),
     svg: lazyGetter('svg', content),
+    // the state is a very basic/simple mechanism inspired by Preact
     state: lazyGetter('state', function () {
       return this.defaultState;
     }),
+    // it is possible to define a default state that'd be always an object otherwise
     defaultState: {
       get: function get$$1() {
         return {};
       }
     },
+    // setting some property state through a new object
+    // or a callback, triggers also automatically a render
+    // unless explicitly specified to not do so (render === false)
     setState: {
       value: function value(state, render) {
         var target = this.state;
@@ -660,6 +675,13 @@ var identity = function identity(O) {
   return O;
 };
 
+var remove = function remove(parentNode, before, after) {
+  var range = parentNode.ownerDocument.createRange();
+  range.setStartBefore(before);
+  range.setEndAfter(after);
+  range.deleteContents();
+};
+
 var domdiff = function domdiff(parentNode, // where changes happen
 currentNodes, // Array of current items/nodes
 futureNodes, // Array of future items/nodes
@@ -705,10 +727,28 @@ beforeNode // optional item/node to use as insertBefore delimiter
         parentNode.insertBefore(get(futureStartNode, 1), get(currentStartNode, 0));
         futureStartNode = futureNodes[++futureStart];
       } else {
-        var el = currentNodes[index];
-        currentNodes[index] = null;
-        parentNode.insertBefore(get(el, 1), get(currentStartNode, 0));
-        futureStartNode = futureNodes[++futureStart];
+        var i = index;
+        var f = futureStart;
+        while (i <= currentEnd && f <= futureEnd && currentNodes[i] === futureNodes[f]) {
+          i++;
+          f++;
+        }
+        if (1 < i - index) {
+          if (--index === currentStart) {
+            parentNode.removeChild(get(currentStartNode, -1));
+          } else {
+            remove(parentNode, get(currentStartNode, -1), get(currentNodes[index], -1));
+          }
+          currentStart = i;
+          futureStart = f;
+          currentStartNode = currentNodes[i];
+          futureStartNode = futureNodes[f];
+        } else {
+          var el = currentNodes[index];
+          currentNodes[index] = null;
+          parentNode.insertBefore(get(el, 1), get(currentStartNode, 0));
+          futureStartNode = futureNodes[++futureStart];
+        }
       }
     }
   }
@@ -730,10 +770,7 @@ beforeNode // optional item/node to use as insertBefore delimiter
       if (currentStart === currentEnd) {
         parentNode.removeChild(get(currentNodes[currentStart], -1));
       } else {
-        var range = parentNode.ownerDocument.createRange();
-        range.setStartBefore(get(currentNodes[currentStart], -1));
-        range.setEndAfter(get(currentNodes[currentEnd], -1));
-        range.deleteContents();
+        remove(parentNode, get(currentNodes[currentStart], -1), get(currentNodes[currentEnd], -1));
       }
     }
   }
@@ -793,6 +830,7 @@ var create$1 = function create$$1(root, paths) {
         break;
       case 'text':
         updates.push(setTextContent(node));
+        node.textContent = '';
         break;
     }
   }
@@ -1091,8 +1129,7 @@ var setAttribute = function setAttribute(node, name, original) {
 // different from text there but it's worth checking
 // for possible defined intents.
 var setTextContent = function setTextContent(node) {
-  // avoid hyper comments inside textarea/style when value is undefined
-  var oldValue = '';
+  var oldValue = void 0;
   var textContent = function textContent(value) {
     if (oldValue !== value) {
       oldValue = value;

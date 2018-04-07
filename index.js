@@ -99,28 +99,26 @@ const trim = UID.trim || function () {
 // to simplify state handling on render.
 function Component() {}
 
-// components will lazily define html or svg properties
-// as soon as these are invoked within the .render() method
-// Such render() method is not provided by the base class
-// but it must be available through the Component extend.
-// Declared components could implement a
-// render(props) method too and use props as needed.
+// Component is lazily setup because it needs
+// wire mechanism as lazy content
 function setup(content) {
+  // there are various weakly referenced variables in here
+  // and mostly are to use Component.for(...) static method.
   const children = new WeakMap;
   const create = Object.create;
   const createEntry = (wm, id, component) => {
     wm.set(id, component);
     return component;
   };
-  const get = (Class, info, id) => {
+  const get = (Class, info, context, id) => {
     switch (typeof id) {
       case 'object':
       case 'function':
         const wm = info.w || (info.w = new WeakMap);
-        return wm.get(id) || createEntry(wm, id, new Class);
+        return wm.get(id) || createEntry(wm, id, new Class(context));
       default:
         const sm = info.p || (info.p = create(null));
-        return sm[id] || (sm[id] = new Class);
+        return sm[id] || (sm[id] = new Class(context));
     }
   };
   const set = context => {
@@ -128,14 +126,19 @@ function setup(content) {
     children.set(context, info);
     return info;
   };
+  // The Component Class
   Object.defineProperties(
     Component,
     {
+      // Component.for(context[, id]) is a convenient way
+      // to automatically relate data/context to children components
+      // If not created yet, the new Component(context) is weakly stored
+      // and after that same instance would always be returned.
       for: {
         configurable: true,
         value(context, id) {
           const info = children.get(context) || set(context);
-          return get(this, info, id == null ? 'default' : id);
+          return get(this, info, context, id == null ? 'default' : id);
         }
       }
     }
@@ -143,6 +146,7 @@ function setup(content) {
   Object.defineProperties(
     Component.prototype,
     {
+      // all events are handled with the component as context
       handleEvent: {value(e) {
         const ct = e.currentTarget;
         this[
@@ -150,10 +154,21 @@ function setup(content) {
           ('on' + e.type)
         ](e);
       }},
+      // components will lazily define html or svg properties
+      // as soon as these are invoked within the .render() method
+      // Such render() method is not provided by the base class
+      // but it must be available through the Component extend.
+      // Declared components could implement a
+      // render(props) method too and use props as needed.
       html: lazyGetter('html', content),
       svg: lazyGetter('svg', content),
+      // the state is a very basic/simple mechanism inspired by Preact
       state: lazyGetter('state', function () { return this.defaultState; }),
+      // it is possible to define a default state that'd be always an object otherwise
       defaultState: {get() { return {}; }},
+      // setting some property state through a new object
+      // or a callback, triggers also automatically a render
+      // unless explicitly specified to not do so (render === false)
       setState: {value(state, render) {
         const target = this.state;
         const source = typeof state === 'function' ? state.call(this, target) : state;
@@ -572,6 +587,13 @@ const toStyle = object => {
 
 const identity = O => O;
 
+const remove = (parentNode, before, after) => {
+  const range = parentNode.ownerDocument.createRange();
+  range.setStartBefore(before);
+  range.setEndAfter(after);
+  range.deleteContents();
+};
+
 const domdiff = (
   parentNode,     // where changes happen
   currentNodes,   // Array of current items/nodes
@@ -635,13 +657,36 @@ const domdiff = (
         futureStartNode = futureNodes[++futureStart];
       }
       else {
-        let el = currentNodes[index];
-        currentNodes[index] = null;
-        parentNode.insertBefore(
-          get(el, 1),
-          get(currentStartNode, 0)
-        );
-        futureStartNode = futureNodes[++futureStart];
+        let i = index;
+        let f = futureStart;
+        while (
+          i <= currentEnd &&
+          f <= futureEnd &&
+          currentNodes[i] === futureNodes[f]
+        ) {
+          i++;
+          f++;
+        }
+        if (1 < (i - index)) {
+          if (--index === currentStart) {
+            parentNode.removeChild(get(currentStartNode, -1));
+          } else {
+            remove(
+              parentNode,
+              get(currentStartNode, -1),
+              get(currentNodes[index], -1)
+            );
+          }
+          currentStart = i;
+          futureStart = f;
+          currentStartNode = currentNodes[i];
+          futureStartNode = futureNodes[f];
+        } else {
+          const el = currentNodes[index];
+          currentNodes[index] = null;
+          parentNode.insertBefore(get(el, 1), get(currentStartNode, 0));
+          futureStartNode = futureNodes[++futureStart];
+        }
       }
     }
   }
@@ -666,10 +711,11 @@ const domdiff = (
         parentNode.removeChild(get(currentNodes[currentStart], -1));
       }
       else {
-        const range = parentNode.ownerDocument.createRange();
-        range.setStartBefore(get(currentNodes[currentStart], -1));
-        range.setEndAfter(get(currentNodes[currentEnd], -1));
-        range.deleteContents();
+        remove(
+          parentNode,
+          get(currentNodes[currentStart], -1),
+          get(currentNodes[currentEnd], -1)
+        );
       }
     }
   }
@@ -732,6 +778,7 @@ const create$1 = (root, paths) => {
         break;
       case 'text':
         updates.push(setTextContent(node));
+        node.textContent = '';
         break;
     }
   }
@@ -1078,8 +1125,7 @@ const setAttribute = (node, name, original) => {
 // different from text there but it's worth checking
 // for possible defined intents.
 const setTextContent = node => {
-  // avoid hyper comments inside textarea/style when value is undefined
-  let oldValue = '';
+  let oldValue;
   const textContent = value => {
     if (oldValue !== value) {
       oldValue = value;

@@ -56,6 +56,6 @@
     "uglify-es": "^3.0.26"
   },
   "dependencies": {
-    "hyperhtml": "^2.5.8"
+    "hyperhtml": "^2.8.0"
   }
 }
