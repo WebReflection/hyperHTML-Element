@@ -113,7 +113,7 @@ MyElement.define('my-element');
 
 You can now define custom elements builtins too:
 ```js
-class MyLink extends HypderHTMLElement {
+class MyLink extends HyperHTMLElement {
   created() { this.render(); }
   render() {
     return this.html`hello there!`;
