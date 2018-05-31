@@ -46,6 +46,7 @@ try {
   };
 }
 // used to store template literals
+/* istanbul ignore next */
 var Map = G.Map || function Map() {
   var keys = [],
       values = [];
@@ -60,13 +61,15 @@ var Map = G.Map || function Map() {
 };
 
 // used to store wired content
+var ID = 0;
 var WeakMap = G.WeakMap || function WeakMap() {
+  var key = UID + ID++;
   return {
     get: function get(obj) {
-      return obj[UID];
+      return obj[key];
     },
     set: function set(obj, value) {
-      Object.defineProperty(obj, UID, {
+      Object.defineProperty(obj, key, {
         configurable: true,
         value: value
       });
@@ -188,7 +191,9 @@ var possibleConstructorReturn = function (self, call) {
 // The main difference is that declared components
 // will not automatically render on setState(...)
 // to simplify state handling on render.
-function Component() {}
+function Component() {
+  return this; // this is needed in Edge !!!
+}
 
 // Component is lazily setup because it needs
 // wire mechanism as lazy content
@@ -202,18 +207,24 @@ function setup(content) {
     return component;
   };
   var get$$1 = function get$$1(Class, info, context, id) {
+    var relation = info.get(Class) || relate(Class, info);
     switch (typeof id === 'undefined' ? 'undefined' : _typeof(id)) {
       case 'object':
       case 'function':
-        var wm = info.w || (info.w = new WeakMap());
+        var wm = relation.w || (relation.w = new WeakMap());
         return wm.get(id) || createEntry(wm, id, new Class(context));
       default:
-        var sm = info.p || (info.p = create(null));
+        var sm = relation.p || (relation.p = create(null));
         return sm[id] || (sm[id] = new Class(context));
     }
   };
+  var relate = function relate(Class, info) {
+    var relation = { w: null, p: null };
+    info.set(Class, relation);
+    return relation;
+  };
   var set$$1 = function set$$1(context) {
-    var info = { w: null, p: null };
+    var info = new Map();
     children.set(context, info);
     return info;
   };
@@ -226,8 +237,7 @@ function setup(content) {
     for: {
       configurable: true,
       value: function value(context, id) {
-        var info = children.get(context) || set$$1(context);
-        return get$$1(this, info, context, id == null ? 'default' : id);
+        return get$$1(this, children.get(context) || set$$1(context), context, id == null ? 'default' : id);
       }
     }
   });
@@ -777,6 +787,8 @@ beforeNode // optional item/node to use as insertBefore delimiter
   return futureNodes;
 };
 
+// see /^script$/i.test(nodeName) bit down here
+// import { create as createElement, text } from '../shared/easy-dom.js';
 // hyper.Component have a connected/disconnected
 // mechanism provided by MutationObserver
 // This weak set is used to recognize components
@@ -916,7 +928,11 @@ var findAttributes$1 = function findAttributes(node, paths, parts) {
   }
   var len = remove.length;
   for (var _i = 0; _i < len; _i++) {
-    node.removeAttributeNode(remove[_i]);
+    // Edge HTML bug #16878726
+    var _attribute = remove[_i];
+    if (/^id$/i.test(_attribute.name)) node.removeAttribute(_attribute.name);
+    // standard browsers would work just fine here
+    else node.removeAttributeNode(remove[_i]);
   }
 
   // This is a very specific Firefox/Safari issue
@@ -924,10 +940,15 @@ var findAttributes$1 = function findAttributes(node, paths, parts) {
   // it's probably worth patching regardless.
   // Basically, scripts created through strings are death.
   // You need to create fresh new scripts instead.
-  // TODO: is there any other node that needs such nonsense ?
+  // TODO: is there any other node that needs such nonsense?
   var nodeName = node.nodeName;
   if (/^script$/i.test(nodeName)) {
-    var script = create(node, nodeName);
+    // this used to be like that
+    // const script = createElement(node, nodeName);
+    // then Edge arrived and decided that scripts created
+    // through template documents aren't worth executing
+    // so it became this ... hopefully it won't hurt in the wild
+    var script = document.createElement(nodeName);
     for (var _i2 = 0; _i2 < attributes.length; _i2++) {
       script.setAttributeNode(attributes[_i2].cloneNode(true));
     }
@@ -1426,9 +1447,26 @@ var _fixBabelExtend = function (O) {
   };
 }(Object);
 
-/*! (C) 2017 Andrea Giammarchi - ISC Style License */
+/*! (C) 2017-2018 Andrea Giammarchi - ISC Style License */
 
-var defineProperty = Object.defineProperty;
+// utils to deal with custom elements builtin extends
+var O = Object;
+var classes = [];
+var defineProperty = O.defineProperty;
+var getOwnPropertyDescriptor = O.getOwnPropertyDescriptor;
+var getOwnPropertyNames = O.getOwnPropertyNames;
+var getOwnPropertySymbols = O.getOwnPropertySymbols || function () {
+  return [];
+};
+var getPrototypeOf = O.getPrototypeOf || function (o) {
+  return o.__proto__;
+};
+var ownKeys = (typeof Reflect === 'undefined' ? 'undefined' : _typeof(Reflect)) === 'object' && Reflect.ownKeys || function (o) {
+  return getOwnPropertyNames(o).concat(getOwnPropertySymbols(o));
+};
+var setPrototypeOf = O.setPrototypeOf || function (o, p) {
+  return o.__proto__ = p, o;
+};
 
 var HyperHTMLElement = _fixBabelExtend(function (_HTMLElement) {
   inherits(HyperHTMLElement, _HTMLElement);
@@ -1519,7 +1557,7 @@ var HyperHTMLElement = _fixBabelExtend(function (_HTMLElement) {
     // define a custom-element in the CustomElementsRegistry
     // class MyEl extends HyperHTMLElement {}
     // MyEl.define('my-el');
-    value: function define$$1(name) {
+    value: function define$$1(name, options) {
       var Class = this;
       var proto = Class.prototype;
 
@@ -1613,7 +1651,7 @@ var HyperHTMLElement = _fixBabelExtend(function (_HTMLElement) {
       // define lazily all handlers
       // class { handleClick() { ... }
       // render() { `<a onclick=${this.handleClick}>` } }
-      Object.getOwnPropertyNames(proto).forEach(function (key) {
+      getOwnPropertyNames(proto).forEach(function (key) {
         if (/^handle[A-Z]/.test(key)) {
           var _key$ = '_' + key + '$';
           var method = proto[key];
@@ -1645,7 +1683,34 @@ var HyperHTMLElement = _fixBabelExtend(function (_HTMLElement) {
         });
       }
 
-      customElements.define(name, Class);
+      if (options && options.extends) {
+        var Native = document.createElement(options.extends).constructor;
+        var Intermediate = function (_Native) {
+          inherits(Intermediate, _Native);
+
+          function Intermediate() {
+            classCallCheck(this, Intermediate);
+            return possibleConstructorReturn(this, (Intermediate.__proto__ || Object.getPrototypeOf(Intermediate)).apply(this, arguments));
+          }
+
+          return Intermediate;
+        }(Native);
+        var Super = getPrototypeOf(Class);
+        ownKeys(Super).filter(function (key) {
+          return ['length', 'name', 'arguments', 'caller', 'prototype'].indexOf(key) < 0;
+        }).forEach(function (key) {
+          return defineProperty(Intermediate, key, getOwnPropertyDescriptor(Super, key));
+        });
+        ownKeys(Super.prototype).forEach(function (key) {
+          return defineProperty(Intermediate.prototype, key, getOwnPropertyDescriptor(Super.prototype, key));
+        });
+        setPrototypeOf(Class, Intermediate);
+        setPrototypeOf(proto, Intermediate.prototype);
+        classes.push(Class);
+        customElements.define(name, Class, options);
+      } else {
+        customElements.define(name, Class);
+      }
       return Class;
     }
   }]);
@@ -1660,6 +1725,16 @@ HyperHTMLElement.bind = bind;
 HyperHTMLElement.intent = define;
 HyperHTMLElement.wire = wire;
 HyperHTMLElement.hyper = hyper;
+
+try {
+  if (Symbol.hasInstance) classes.push(defineProperty(HyperHTMLElement, Symbol.hasInstance, {
+    enumerable: false,
+    configurable: true,
+    value: function value(instance) {
+      return classes.some(isPrototypeOf, getPrototypeOf(instance));
+    }
+  }));
+} catch (meh) {}
 
 // ------------------------------//
 // DOMContentLoaded VS created() //
@@ -1691,6 +1766,10 @@ function checkReady(created) {
   } else {
     dom.list.push(checkReady.bind(this, created));
   }
+}
+
+function isPrototypeOf(Class) {
+  return this === Class.prototype;
 }
 
 function isReady(created) {

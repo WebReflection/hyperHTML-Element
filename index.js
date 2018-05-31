@@ -46,6 +46,7 @@ try {
   };
 }
 // used to store template literals
+/* istanbul ignore next */
 const Map = G.Map || function Map() {
   const keys = [], values = [];
   return {
@@ -59,11 +60,13 @@ const Map = G.Map || function Map() {
 };
 
 // used to store wired content
+let ID = 0;
 const WeakMap = G.WeakMap || function WeakMap() {
+  const key = UID + ID++;
   return {
-    get(obj) { return obj[UID]; },
+    get(obj) { return obj[key]; },
     set(obj, value) {
-      Object.defineProperty(obj, UID, {
+      Object.defineProperty(obj, key, {
         configurable: true,
         value
       });
@@ -97,7 +100,9 @@ const trim = UID.trim || function () {
 // The main difference is that declared components
 // will not automatically render on setState(...)
 // to simplify state handling on render.
-function Component() {}
+function Component() {
+  return this; // this is needed in Edge !!!
+}
 
 // Component is lazily setup because it needs
 // wire mechanism as lazy content
@@ -111,18 +116,24 @@ function setup(content) {
     return component;
   };
   const get = (Class, info, context, id) => {
+    const relation = info.get(Class) || relate(Class, info);
     switch (typeof id) {
       case 'object':
       case 'function':
-        const wm = info.w || (info.w = new WeakMap);
+        const wm = relation.w || (relation.w = new WeakMap);
         return wm.get(id) || createEntry(wm, id, new Class(context));
       default:
-        const sm = info.p || (info.p = create(null));
+        const sm = relation.p || (relation.p = create(null));
         return sm[id] || (sm[id] = new Class(context));
     }
   };
+  const relate = (Class, info) => {
+    const relation = {w: null, p: null};
+    info.set(Class, relation);
+    return relation;
+  };
   const set = context => {
-    const info = {w: null, p: null};
+    const info = new Map;
     children.set(context, info);
     return info;
   };
@@ -137,8 +148,13 @@ function setup(content) {
       for: {
         configurable: true,
         value(context, id) {
-          const info = children.get(context) || set(context);
-          return get(this, info, context, id == null ? 'default' : id);
+          return get(
+            this,
+            children.get(context) || set(context),
+            context,
+            id == null ?
+              'default' : id
+          );
         }
       }
     }
@@ -722,6 +738,8 @@ const domdiff = (
   return futureNodes;
 };
 
+// see /^script$/i.test(nodeName) bit down here
+// import { create as createElement, text } from '../shared/easy-dom.js';
 // hyper.Component have a connected/disconnected
 // mechanism provided by MutationObserver
 // This weak set is used to recognize components
@@ -870,7 +888,13 @@ const findAttributes$1 = (node, paths, parts) => {
   }
   const len = remove.length;
   for (let i = 0; i < len; i++) {
-    node.removeAttributeNode(remove[i]);
+    // Edge HTML bug #16878726
+    const attribute = remove[i];
+    if (/^id$/i.test(attribute.name))
+      node.removeAttribute(attribute.name);
+    // standard browsers would work just fine here
+    else
+      node.removeAttributeNode(remove[i]);
   }
 
   // This is a very specific Firefox/Safari issue
@@ -878,10 +902,15 @@ const findAttributes$1 = (node, paths, parts) => {
   // it's probably worth patching regardless.
   // Basically, scripts created through strings are death.
   // You need to create fresh new scripts instead.
-  // TODO: is there any other node that needs such nonsense ?
+  // TODO: is there any other node that needs such nonsense?
   const nodeName = node.nodeName;
   if (/^script$/i.test(nodeName)) {
-    const script = create(node, nodeName);
+    // this used to be like that
+    // const script = createElement(node, nodeName);
+    // then Edge arrived and decided that scripts created
+    // through template documents aren't worth executing
+    // so it became this ... hopefully it won't hurt in the wild
+    const script = document.createElement(nodeName);
     for (let i = 0; i < attributes.length; i++) {
       script.setAttributeNode(attributes[i].cloneNode(true));
     }
@@ -1412,16 +1441,27 @@ function hyper(HTML) {
     ).apply(null, arguments);
 }
 
-/*! (C) 2017 Andrea Giammarchi - ISC Style License */
+/*! (C) 2017-2018 Andrea Giammarchi - ISC Style License */
 
-const defineProperty = Object.defineProperty;
+// utils to deal with custom elements builtin extends
+const O = Object;
+const classes = [];
+const defineProperty = O.defineProperty;
+const getOwnPropertyDescriptor = O.getOwnPropertyDescriptor;
+const getOwnPropertyNames = O.getOwnPropertyNames;
+const getOwnPropertySymbols = O.getOwnPropertySymbols || (() => []);
+const getPrototypeOf = O.getPrototypeOf || (o => o.__proto__);
+const ownKeys = typeof Reflect === 'object' && Reflect.ownKeys ||
+                (o => getOwnPropertyNames(o).concat(getOwnPropertySymbols(o)));
+const setPrototypeOf = O.setPrototypeOf ||
+                      ((o, p) => (o.__proto__ = p, o));
 
 class HyperHTMLElement extends HTMLElement {
 
   // define a custom-element in the CustomElementsRegistry
   // class MyEl extends HyperHTMLElement {}
   // MyEl.define('my-el');
-  static define(name) {
+  static define(name, options) {
     const Class = this;
     const proto = Class.prototype;
 
@@ -1529,7 +1569,7 @@ class HyperHTMLElement extends HTMLElement {
     // define lazily all handlers
     // class { handleClick() { ... }
     // render() { `<a onclick=${this.handleClick}>` } }
-    Object.getOwnPropertyNames(proto).forEach(key => {
+    getOwnPropertyNames(proto).forEach(key => {
       if (/^handle[A-Z]/.test(key)) {
         const _key$ = '_' + key + '$';
         const method = proto[key];
@@ -1569,7 +1609,34 @@ class HyperHTMLElement extends HTMLElement {
       );
     }
 
-    customElements.define(name, Class);
+    if (options && options.extends) {
+      const Native = document.createElement(options.extends).constructor;
+      const Intermediate = class extends Native {};
+      const Super = getPrototypeOf(Class);
+      ownKeys(Super)
+        .filter(key => [
+          'length', 'name', 'arguments', 'caller', 'prototype'
+        ].indexOf(key) < 0)
+        .forEach(key => defineProperty(
+          Intermediate,
+          key,
+          getOwnPropertyDescriptor(Super, key)
+        )
+      );
+      ownKeys(Super.prototype)
+        .forEach(key => defineProperty(
+          Intermediate.prototype,
+          key,
+          getOwnPropertyDescriptor(Super.prototype, key)
+        )
+      );
+      setPrototypeOf(Class, Intermediate);
+      setPrototypeOf(proto, Intermediate.prototype);
+      classes.push(Class);
+      customElements.define(name, Class, options);
+    } else {
+      customElements.define(name, Class);
+    }
     return Class;
   }
 
@@ -1637,6 +1704,17 @@ HyperHTMLElement.intent = define;
 HyperHTMLElement.wire = wire;
 HyperHTMLElement.hyper = hyper;
 
+try {
+  if (Symbol.hasInstance) classes.push(
+    defineProperty(HyperHTMLElement, Symbol.hasInstance, {
+      enumerable: false,
+      configurable: true,
+      value(instance) {
+        return classes.some(isPrototypeOf, getPrototypeOf(instance));
+      }
+    }));
+} catch(meh) {}
+
 // ------------------------------//
 // DOMContentLoaded VS created() //
 // ------------------------------//
@@ -1665,6 +1743,10 @@ function checkReady(created) {
   } else {
     dom.list.push(checkReady.bind(this, created));
   }
+}
+
+function isPrototypeOf(Class) {
+  return this === Class.prototype;
 }
 
 function isReady(created) {

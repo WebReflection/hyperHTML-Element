@@ -3,7 +3,8 @@
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
 var _templateObject = _taggedTemplateLiteral(['\n    Hi, my name is ', ' and I am ', ''], ['\n    Hi, my name is ', ' and I am ', '']),
-    _templateObject2 = _taggedTemplateLiteral(['\n    <input value="', '" oninput="', '">'], ['\n    <input value="', '" oninput="', '">']);
+    _templateObject2 = _taggedTemplateLiteral(['\n    <input value="', '" oninput="', '">'], ['\n    <input value="', '" oninput="', '">']),
+    _templateObject3 = _taggedTemplateLiteral(['it worked'], ['it worked']);
 
 function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defineProperties(strings, { raw: { value: Object.freeze(raw) } })); }
 
@@ -85,4 +86,31 @@ var MyInput = function (_HyperHTMLElement2) {
 }(HyperHTMLElement);
 
 MyInput.define('my-input');
+
+var MyLink = function (_HyperHTMLElement3) {
+  _inherits(MyLink, _HyperHTMLElement3);
+
+  function MyLink() {
+    _classCallCheck(this, MyLink);
+
+    return _possibleConstructorReturn(this, (MyLink.__proto__ || Object.getPrototypeOf(MyLink)).apply(this, arguments));
+  }
+
+  _createClass(MyLink, [{
+    key: 'created',
+    value: function created() {
+      this.href = 'https://github.com/WebReflection/hyperHTML-Element/';
+      this.render();
+    }
+  }, {
+    key: 'render',
+    value: function render() {
+      return this.html(_templateObject3);
+    }
+  }]);
+
+  return MyLink;
+}(HyperHTMLElement);
+
+MyLink.define('my-link', { extends: 'a' });
 

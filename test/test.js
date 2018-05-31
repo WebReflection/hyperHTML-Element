@@ -6,7 +6,6 @@ class MySelf extends HyperHTMLElement {
     Hi, my name is ${this.name} and I am ${this.age}`;
   }
 }
-
 MySelf.define('my-self');
 
 class MyInput extends HyperHTMLElement {
@@ -20,5 +19,15 @@ class MyInput extends HyperHTMLElement {
     <input value="${this.value}" oninput="${this}">`;
   }
 }
-
 MyInput.define('my-input');
+
+class MyLink extends HyperHTMLElement {
+  created() {
+    this.href = 'https://github.com/WebReflection/hyperHTML-Element/';
+    this.render();
+  }
+  render () {
+    return this.html`it worked`;
+  }
+}
+MyLink.define('my-link', {extends: 'a'});

@@ -1,16 +1,28 @@
 'use strict';
-/*! (C) 2017 Andrea Giammarchi - ISC Style License */
+/*! (C) 2017-2018 Andrea Giammarchi - ISC Style License */
 
 const {Component, bind, define, hyper, wire} = require('hyperhtml/cjs');
 
-const defineProperty = Object.defineProperty;
+// utils to deal with custom elements builtin extends
+const O = Object;
+const classes = [];
+const defineProperties = O.defineProperties;
+const defineProperty = O.defineProperty;
+const getOwnPropertyDescriptor = O.getOwnPropertyDescriptor;
+const getOwnPropertyNames = O.getOwnPropertyNames;
+const getOwnPropertySymbols = O.getOwnPropertySymbols || (() => []);
+const getPrototypeOf = O.getPrototypeOf || (o => o.__proto__);
+const ownKeys = typeof Reflect === 'object' && Reflect.ownKeys ||
+                (o => getOwnPropertyNames(o).concat(getOwnPropertySymbols(o)));
+const setPrototypeOf = O.setPrototypeOf ||
+                      ((o, p) => (o.__proto__ = p, o));
 
 class HyperHTMLElement extends HTMLElement {
 
   // define a custom-element in the CustomElementsRegistry
   // class MyEl extends HyperHTMLElement {}
   // MyEl.define('my-el');
-  static define(name) {
+  static define(name, options) {
     const Class = this;
     const proto = Class.prototype;
 
@@ -118,7 +130,7 @@ class HyperHTMLElement extends HTMLElement {
     // define lazily all handlers
     // class { handleClick() { ... }
     // render() { `<a onclick=${this.handleClick}>` } }
-    Object.getOwnPropertyNames(proto).forEach(key => {
+    getOwnPropertyNames(proto).forEach(key => {
       if (/^handle[A-Z]/.test(key)) {
         const _key$ = '_' + key + '$';
         const method = proto[key];
@@ -158,7 +170,34 @@ class HyperHTMLElement extends HTMLElement {
       );
     }
 
-    customElements.define(name, Class);
+    if (options && options.extends) {
+      const Native = document.createElement(options.extends).constructor;
+      const Intermediate = class extends Native {};
+      const Super = getPrototypeOf(Class);
+      ownKeys(Super)
+        .filter(key => [
+          'length', 'name', 'arguments', 'caller', 'prototype'
+        ].indexOf(key) < 0)
+        .forEach(key => defineProperty(
+          Intermediate,
+          key,
+          getOwnPropertyDescriptor(Super, key)
+        )
+      );
+      ownKeys(Super.prototype)
+        .forEach(key => defineProperty(
+          Intermediate.prototype,
+          key,
+          getOwnPropertyDescriptor(Super.prototype, key)
+        )
+      );
+      setPrototypeOf(Class, Intermediate);
+      setPrototypeOf(proto, Intermediate.prototype);
+      classes.push(Class);
+      customElements.define(name, Class, options);
+    } else {
+      customElements.define(name, Class);
+    }
     return Class;
   }
 
@@ -226,6 +265,17 @@ HyperHTMLElement.intent = define;
 HyperHTMLElement.wire = wire;
 HyperHTMLElement.hyper = hyper;
 
+try {
+  if (Symbol.hasInstance) classes.push(
+    defineProperty(HyperHTMLElement, Symbol.hasInstance, {
+      enumerable: false,
+      configurable: true,
+      value(instance) {
+        return classes.some(isPrototypeOf, getPrototypeOf(instance));
+      }
+    }));
+} catch(meh) {}
+
 Object.defineProperty(exports, '__esModule', {value: true}).default = HyperHTMLElement;
 
 // ------------------------------//
@@ -256,6 +306,10 @@ function checkReady(created) {
   } else {
     dom.list.push(checkReady.bind(this, created));
   }
+}
+
+function isPrototypeOf(Class) {
+  return this === Class.prototype;
 }
 
 function isReady(created) {

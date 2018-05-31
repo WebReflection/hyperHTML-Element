@@ -6,6 +6,12 @@ global.customElements = document.customElements;
 global.HTMLElement = HTMLElement;
 
 tressa.title('HyperHTMLElement');
+
+delete Object.getOwnPropertySymbols;
+delete Object.getPrototypeOf;
+delete Object.setPrototypeOf;
+delete Reflect.ownKeys;
+
 let HyperHTMLElement = require('./cjs').default;
 
 class MyElement extends HyperHTMLElement {
@@ -41,7 +47,11 @@ class MyElement extends HyperHTMLElement {
 
 MyElement.define('my-el');
 
+class MyLink extends HyperHTMLElement {}
+MyLink.define('my-link', {extends: 'a'});
+
 tressa.assert(customElements.get('my-el') === MyElement, '<my-el> defined in the registry');
+tressa.assert(new MyLink instanceof HyperHTMLElement, '<my-link> is an instance');
 
 let el = new MyElement();
 document.body.appendChild(el);
@@ -312,4 +322,7 @@ setTimeout(function () {
   s.state = {z: 123};
   tressa.assert(s.state.z === 123 && !s.state.a, 'state can be re-set too');
 
+  delete require.cache[require.resolve('./cjs')];
+  global.Symbol = {};
+  require('./cjs');
 }, 100);

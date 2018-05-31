@@ -109,6 +109,19 @@ class MyElement extends HyperHTMLElement {
 MyElement.define('my-element');
 ```
 
+#### New in v1.8
+
+You can now define custom elements builtins too:
+```js
+class MyLink extends HypderHTMLElement {
+  created() { this.render(); }
+  render() {
+    return this.html`hello there!`;
+  }
+}
+MyLink.define('my-link', {extends: 'a'});
+```
+
 
 ### Compatibility
 
