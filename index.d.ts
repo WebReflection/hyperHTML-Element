@@ -85,7 +85,7 @@ declare class HyperHTMLElement<T = {}> {
    static intent: typeof define;
    static hyper: typeof hyper;
    static wire: typeof wire;
-   static define(name: string): void;
+   static define(name: string, options?: ElementDefinitionOptions): void;
 }
 
 export default HyperHTMLElement;
