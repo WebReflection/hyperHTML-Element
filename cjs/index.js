@@ -193,11 +193,11 @@ class HyperHTMLElement extends HTMLElement {
       );
       setPrototypeOf(Class, Intermediate);
       setPrototypeOf(proto, Intermediate.prototype);
-      classes.push(Class);
       customElements.define(name, Class, options);
     } else {
       customElements.define(name, Class);
     }
+    classes.push(Class);
     return Class;
   }
 

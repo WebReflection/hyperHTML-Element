@@ -7,19 +7,68 @@
   "main": "cjs/index.js",
   "types": "index.d.ts",
   "scripts": {
-    "bundle-cjs": "ascjs ./esm ./cjs && sed -i.bak 's/hyperhtml\\/esm/hyperhtml\\/cjs/' cjs/index.js && rm -f cjs/index.js.bak",
-    "bundle-esm": "rollup --config esm.config.js && npm run fix-esm-export",
-    "bundle-es5": "rollup --config es5.config.js && npm run fix-es5-export",
-    "babel-test": "babel test/test.js > test/test.es5.js",
-    "build": "npm run bundle-cjs && npm run bundle-esm && npm run bundle-es5 && npm run babel-test && npm run minify && npm run minify-es5 && npm run size && npm run size-es5 && npm test",
+    "$": "npm-dollar",
+    "build": "npm-dollar build",
+    "bundle": "npm-dollar bundle",
+    "min": "npm-dollar min",
     "coveralls": "cat ./coverage/lcov.info | coveralls",
-    "fix-esm-export": "sed -i.bak 's/return exports;/return exports.default;/' index.js && rm -f index.js.bak",
-    "fix-es5-export": "sed -i.bak 's/return exports;/return exports[\"default\"];/' es5.js && rm -f es5.js.bak",
-    "minify": "uglifyjs index.js --comments=/^!/ --compress --mangle -o min.js",
-    "minify-es5": "uglifyjs es5.js --comments=/^!/ --compress --mangle -o es5.min.js",
-    "size": "echo $(tput bold)'Size for ES2015'$(tput sgr0); cat index.js | wc -c;cat min.js | wc -c;gzip -c min.js | wc -c",
-    "size-es5": "echo $(tput bold)'Size for ES5'$(tput sgr0); cat es5.js | wc -c;cat es5.min.js | wc -c;gzip -c es5.min.js | wc -c",
-    "test": "istanbul cover test.js"
+    "test": "npm-dollar test.default"
+  },
+  "$": {
+    "build": [
+      "$ bundle",
+      "$ test.babel",
+      "$ minify",
+      "$ size",
+      "$ test"
+    ],
+    "bundle": {
+      "cjs": [
+        "ascjs ./esm ./cjs",
+        "sed -i.bak 's/hyperhtml\\/esm/hyperhtml\\/cjs/' cjs/index.js",
+        "rm -f cjs/index.js.bak"
+      ],
+      "esm": [
+        "rollup --config esm.config.js",
+        "$ fix.esm"
+      ],
+      "es5": [
+        "rollup --config es5.config.js",
+        "$ fix.es5"
+      ]
+    },
+    "fix": {
+      "esm": [
+        "sed -i.bak 's/return exports;/return exports.default;/' index.js",
+        "rm -f index.js.bak"
+      ],
+      "es5": [
+        "sed -i.bak 's/return exports;/return exports[\"default\"];/' es5.js",
+        "rm -f es5.js.bak"
+      ]
+    },
+    "minify": {
+      "es6": "uglifyjs index.js --comments=/^!/ --compress --mangle -o min.js",
+      "es5": "uglifyjs es5.js --comments=/^!/ --compress --mangle -o es5.min.js"
+    },
+    "size": {
+      "esm": [[
+        "echo $(tput bold)'Size for ES2015'$(tput sgr0); cat index.js |",
+        "wc -c;cat min.js |",
+        "wc -c;gzip -c min.js |",
+        "wc -c"
+      ]],
+      "es5": [[
+        "echo $(tput bold)'Size for ES5'$(tput sgr0); cat es5.js |",
+        "wc -c;cat es5.min.js |",
+        "wc -c;gzip -c es5.min.js |",
+        "wc -c"
+      ]]
+    },
+    "test": {
+      "babel": "babel test/test.js > test/test.es5.js",
+      "default": "istanbul cover test.js"
+    }
   },
   "repository": {
     "type": "git",
@@ -47,6 +96,7 @@
     "basichtml": "^0.16.0",
     "coveralls": "^3.0.1",
     "istanbul": "^0.4.5",
+    "npm-dollar": "^0.1.3",
     "rollup": "^0.59.4",
     "rollup-plugin-alias": "^1.4.0",
     "rollup-plugin-babel": "^3.0.4",
