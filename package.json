@@ -1,6 +1,6 @@
 {
   "name": "hyperhtml-element",
-  "version": "1.8.1",
+  "version": "1.8.2",
   "description": "An extensible class to define hyperHTML based Custom Elements",
   "browser": "min.js",
   "module": "esm/index.js",
@@ -52,18 +52,22 @@
       "es5": "uglifyjs es5.js --comments=/^!/ --compress --mangle -o es5.min.js"
     },
     "size": {
-      "esm": [[
-        "echo $(tput bold)'Size for ES2015'$(tput sgr0); cat index.js |",
-        "wc -c;cat min.js |",
-        "wc -c;gzip -c min.js |",
-        "wc -c"
-      ]],
-      "es5": [[
-        "echo $(tput bold)'Size for ES5'$(tput sgr0); cat es5.js |",
-        "wc -c;cat es5.min.js |",
-        "wc -c;gzip -c es5.min.js |",
-        "wc -c"
-      ]]
+      "esm": [
+        [
+          "echo $(tput bold)'Size for ES2015'$(tput sgr0); cat index.js |",
+          "wc -c;cat min.js |",
+          "wc -c;gzip -c min.js |",
+          "wc -c"
+        ]
+      ],
+      "es5": [
+        [
+          "echo $(tput bold)'Size for ES5'$(tput sgr0); cat es5.js |",
+          "wc -c;cat es5.min.js |",
+          "wc -c;gzip -c es5.min.js |",
+          "wc -c"
+        ]
+      ]
     },
     "test": {
       "babel": "babel test/test.js > test/test.es5.js",
