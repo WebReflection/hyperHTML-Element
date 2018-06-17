@@ -195,6 +195,7 @@ class HyperHTMLElement extends HTMLElement {
       classes.push(Class);
       customElements.define(name, Class, options);
     } else {
+      classes.push(Class);
       customElements.define(name, Class);
     }
     return Class;
