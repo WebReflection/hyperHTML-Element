@@ -409,6 +409,18 @@ var HyperHTMLElement = (function (exports) {
     return node.cloneNode(true);
   };
 
+  // IE and Edge do not support children in SVG nodes
+  /* istanbul ignore next */
+  var getChildren = function getChildren(node) {
+    var children = [];
+    var childNodes = node.childNodes;
+    var length = childNodes.length;
+    for (var i = 0; i < length; i++) {
+      if (childNodes[i].nodeType === ELEMENT_NODE) children.push(childNodes[i]);
+    }
+    return children;
+  };
+
   // used to import html into fragments
   var importNode = hasImportNode ? function (doc$$1, node) {
     return doc$$1.importNode(node, true);
@@ -454,6 +466,22 @@ var HyperHTMLElement = (function (exports) {
       };
     }
     return _TL(t);
+  };
+
+  // used to store templates objects
+  // since neither Map nor WeakMap are safe
+  var TemplateMap = function TemplateMap() {
+    try {
+      var wm = new WeakMap();
+      var o_O = Object.freeze([]);
+      wm.set(o_O, true);
+      if (!wm.get(o_O)) throw o_O;
+      return wm;
+    } catch (o_O) {
+      // inevitable legacy code leaks due
+      // https://github.com/tc39/ecma262/pull/890
+      return new Map();
+    }
   };
 
   // create document fragments via native template
@@ -655,11 +683,15 @@ var HyperHTMLElement = (function (exports) {
     return O;
   };
 
-  var remove = function remove(parentNode, before, after) {
-    var range = parentNode.ownerDocument.createRange();
-    range.setStartBefore(before);
-    range.setEndAfter(after);
-    range.deleteContents();
+  var remove = function remove(get, parentNode, before, after) {
+    if (after == null) {
+      parentNode.removeChild(get(before, -1));
+    } else {
+      var range = parentNode.ownerDocument.createRange();
+      range.setStartBefore(get(before, -1));
+      range.setEndAfter(get(after, -1));
+      range.deleteContents();
+    }
   };
 
   var domdiff = function domdiff(parentNode, // where changes happen
@@ -717,7 +749,7 @@ var HyperHTMLElement = (function (exports) {
             if (--index === currentStart) {
               parentNode.removeChild(get(currentStartNode, -1));
             } else {
-              remove(parentNode, get(currentStartNode, -1), get(currentNodes[index], -1));
+              remove(get, parentNode, currentStartNode, currentNodes[index]);
             }
             currentStart = i;
             futureStart = f;
@@ -750,7 +782,7 @@ var HyperHTMLElement = (function (exports) {
         if (currentStart === currentEnd) {
           parentNode.removeChild(get(currentNodes[currentStart], -1));
         } else {
-          remove(parentNode, get(currentNodes[currentStart], -1), get(currentNodes[currentEnd], -1));
+          remove(get, parentNode, currentNodes[currentStart], currentNodes[currentEnd]);
         }
       }
     }
@@ -1179,7 +1211,8 @@ var HyperHTMLElement = (function (exports) {
         node.dispatchEvent(event);
       }
 
-      var children = node.children;
+      /* istanbul ignore next */
+      var children = node.children || getChildren(node);
       var length = children.length;
       for (var i = 0; i < length; i++) {
         dispatchTarget(children[i], event);
@@ -1213,10 +1246,7 @@ var HyperHTMLElement = (function (exports) {
   var bewitched = new WeakMap();
 
   // all unique template literals
-  // if the WeakMap is the global one, use it
-  // otherwise uses a Map because polyfilled WeakMaps
-  // cannot set any property to frozen objects (templates)
-  var templates = WeakMap === G.WeakMap ? new WeakMap() : new Map();
+  var templates = TemplateMap();
 
   // better known as hyper.bind(node), the render is
   // the main tag function in charge of fully upgrading
@@ -1570,9 +1600,10 @@ var HyperHTMLElement = (function (exports) {
           //    via Object.defineProperty to preserve its non-enumerable nature.
           defineProperty$1(proto, 'attributeChangedCallback', {
             configurable: true,
-            value: function value(name, prev, curr) {
+            value: function aCC(name, prev, curr) {
               if (this._init$) {
                 checkReady.call(this, created);
+                if (this._init$) return this._init$$.push(aCC.bind(this, name, prev, curr));
               }
               // ensure setting same value twice
               // won't trigger twice attributeChangedCallback
@@ -1589,9 +1620,10 @@ var HyperHTMLElement = (function (exports) {
           var hasConnect = !!onConnected;
           defineProperty$1(proto, 'connectedCallback', {
             configurable: true,
-            value: function value() {
+            value: function cC() {
               if (this._init$) {
                 checkReady.call(this, created);
+                if (this._init$) return this._init$$.push(cC.bind(this));
               }
               if (hasConnect) {
                 onConnected.apply(this, arguments);
@@ -1704,32 +1736,40 @@ var HyperHTMLElement = (function (exports) {
   // DOMContentLoaded VS created() //
   // ------------------------------//
   var dom = {
-    handleEvent: function handleEvent(e) {
-      if (dom.ready) {
-        document.removeEventListener(e.type, dom, false);
-        dom.list.splice(0).forEach(function (fn) {
-          fn();
-        });
-      }
+    type: 'DOMContentLoaded',
+    handleEvent: function handleEvent() {
+      if (dom.ready()) {
+        document.removeEventListener(dom.type, dom, false);
+        dom.list.splice(0).forEach(invoke);
+      } else setTimeout(dom.handleEvent);
     },
-    get ready() {
+    ready: function ready() {
       return document.readyState === 'complete';
     },
+
     list: []
   };
 
-  if (!dom.ready) {
-    document.addEventListener('DOMContentLoaded', dom, false);
+  if (!dom.ready()) {
+    document.addEventListener(dom.type, dom, false);
   }
 
   function checkReady(created) {
-    if (dom.ready || isReady.call(this, created)) {
+    if (dom.ready() || isReady.call(this, created)) {
       if (this._init$) {
+        var list = this._init$$;
+        if (list) delete this._init$$;
         created.call(defineProperty$1(this, '_init$', { value: false }));
+        if (list) list.forEach(invoke);
       }
     } else {
+      if (!this.hasOwnProperty('_init$$')) defineProperty$1(this, '_init$$', { configurable: true, value: [] });
       dom.list.push(checkReady.bind(this, created));
     }
+  }
+
+  function invoke(fn) {
+    fn();
   }
 
   function isPrototypeOf(Class) {

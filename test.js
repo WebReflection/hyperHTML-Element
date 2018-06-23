@@ -26,6 +26,11 @@ class MyElement extends HyperHTMLElement {
     return self;
   }
 
+  get nextSibling() {
+    delete MyElement.prototype.nextSibling;
+    return false;
+  }
+
   created() {
     this.method.push('created');
   }
@@ -36,7 +41,6 @@ class MyElement extends HyperHTMLElement {
 
   connectedCallback() {
     this.method.push('connectedCallback');
-    this.key = 'value';
   }
 
   render() {
@@ -54,7 +58,7 @@ tressa.assert(customElements.get('my-el') === MyElement, '<my-el> defined in the
 tressa.assert(new MyLink instanceof HyperHTMLElement, '<my-link> is an instance');
 
 let el = new MyElement();
-document.body.appendChild(el);
+document.body.appendChild(el).key = 'value';
 setTimeout(function () { document.body.appendChild(document.createElement('p')); }, 50);
 
 setTimeout(function () {

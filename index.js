@@ -348,6 +348,19 @@ var HyperHTMLElement = (function (exports) {
     /* istanbul ignore next */
     node => node.cloneNode(true);
 
+  // IE and Edge do not support children in SVG nodes
+  /* istanbul ignore next */
+  const getChildren = node => {
+    const children = [];
+    const childNodes = node.childNodes;
+    const length = childNodes.length;
+    for (let i = 0; i < length; i++) {
+      if (childNodes[i].nodeType === ELEMENT_NODE)
+        children.push(childNodes[i]);
+    }
+    return children;
+  };
+
   // used to import html into fragments
   const importNode = hasImportNode ?
     (doc$$1, node) => doc$$1.importNode(node, true) :
@@ -376,10 +389,10 @@ var HyperHTMLElement = (function (exports) {
       // TypeScript template literals are not standard
       t.propertyIsEnumerable('raw') ||
       (
-        // Firefox < 55 has not standard implementation neither
-        /Firefox\/(\d+)/.test((G.navigator || {}).userAgent) &&
-        parseFloat(RegExp.$1) < 55
-      )
+          // Firefox < 55 has not standard implementation neither
+          /Firefox\/(\d+)/.test((G.navigator || {}).userAgent) &&
+            parseFloat(RegExp.$1) < 55
+          )
     ) {
       const T = {};
       TL = t => {
@@ -391,6 +404,23 @@ var HyperHTMLElement = (function (exports) {
       TL = t => t;
     }
     return TL(t);
+  };
+
+  // used to store templates objects
+  // since neither Map nor WeakMap are safe
+  const TemplateMap = () => {
+    try {
+      const wm = new WeakMap;
+      const o_O = Object.freeze([]);
+      wm.set(o_O, true);
+      if (!wm.get(o_O))
+        throw o_O;
+      return wm;
+    } catch(o_O) {
+      // inevitable legacy code leaks due
+      // https://github.com/tc39/ecma262/pull/890
+      return new Map;
+    }
   };
 
   // create document fragments via native template
@@ -598,11 +628,15 @@ var HyperHTMLElement = (function (exports) {
 
   const identity = O => O;
 
-  const remove = (parentNode, before, after) => {
-    const range = parentNode.ownerDocument.createRange();
-    range.setStartBefore(before);
-    range.setEndAfter(after);
-    range.deleteContents();
+  const remove = (get, parentNode, before, after) => {
+    if (after == null) {
+      parentNode.removeChild(get(before, -1));
+    } else {
+      const range = parentNode.ownerDocument.createRange();
+      range.setStartBefore(get(before, -1));
+      range.setEndAfter(get(after, -1));
+      range.deleteContents();
+    }
   };
 
   const domdiff = (
@@ -683,9 +717,10 @@ var HyperHTMLElement = (function (exports) {
               parentNode.removeChild(get(currentStartNode, -1));
             } else {
               remove(
+                get,
                 parentNode,
-                get(currentStartNode, -1),
-                get(currentNodes[index], -1)
+                currentStartNode,
+                currentNodes[index]
               );
             }
             currentStart = i;
@@ -717,15 +752,17 @@ var HyperHTMLElement = (function (exports) {
         }
       }
       else {
-        if (currentNodes[currentStart] == null) currentStart++;
+        if (currentNodes[currentStart] == null)
+          currentStart++;
         if (currentStart === currentEnd) {
           parentNode.removeChild(get(currentNodes[currentStart], -1));
         }
         else {
           remove(
+            get,
             parentNode,
-            get(currentNodes[currentStart], -1),
-            get(currentNodes[currentEnd], -1)
+            currentNodes[currentStart],
+            currentNodes[currentEnd]
           );
         }
       }
@@ -1208,7 +1245,8 @@ var HyperHTMLElement = (function (exports) {
         node.dispatchEvent(event);
       }
 
-      const children = node.children;
+      /* istanbul ignore next */
+      const children = node.children || getChildren(node);
       const length = children.length;
       for (let i = 0; i < length; i++) {
         dispatchTarget(children[i], event);
@@ -1242,10 +1280,7 @@ var HyperHTMLElement = (function (exports) {
   const bewitched = new WeakMap;
 
   // all unique template literals
-  // if the WeakMap is the global one, use it
-  // otherwise uses a Map because polyfilled WeakMaps
-  // cannot set any property to frozen objects (templates)
-  const templates = WeakMap === G.WeakMap ? new WeakMap : new Map;
+  const templates = TemplateMap();
 
   // better known as hyper.bind(node), the render is
   // the main tag function in charge of fully upgrading
@@ -1507,9 +1542,11 @@ var HyperHTMLElement = (function (exports) {
           'attributeChangedCallback',
           {
             configurable: true,
-            value(name, prev, curr) {
+            value: function aCC(name, prev, curr) {
               if (this._init$) {
                 checkReady.call(this, created);
+                if (this._init$)
+                  return this._init$$.push(aCC.bind(this, name, prev, curr));
               }
               // ensure setting same value twice
               // won't trigger twice attributeChangedCallback
@@ -1530,9 +1567,11 @@ var HyperHTMLElement = (function (exports) {
           'connectedCallback',
           {
             configurable: true,
-            value() {
+            value: function cC() {
               if (this._init$) {
                 checkReady.call(this, created);
+                if (this._init$)
+                  return this._init$$.push(cC.bind(this));
               }
               if (hasConnect) {
                 onConnected.apply(this, arguments);
@@ -1712,30 +1751,42 @@ var HyperHTMLElement = (function (exports) {
   // DOMContentLoaded VS created() //
   // ------------------------------//
   const dom = {
-    handleEvent: function (e) {
-      if (dom.ready) {
-        document.removeEventListener(e.type, dom, false);
-        dom.list.splice(0).forEach(function (fn) { fn(); });
+    type: 'DOMContentLoaded',
+    handleEvent() {
+      if (dom.ready()) {
+        document.removeEventListener(dom.type, dom, false);
+        dom.list.splice(0).forEach(invoke);
       }
+      else
+        setTimeout(dom.handleEvent);
     },
-    get ready() {
+    ready() {
       return document.readyState === 'complete';
     },
     list: []
   };
 
-  if (!dom.ready) {
-    document.addEventListener('DOMContentLoaded', dom, false);
+  if (!dom.ready()) {
+    document.addEventListener(dom.type, dom, false);
   }
 
   function checkReady(created) {
-    if (dom.ready || isReady.call(this, created)) {
+    if (dom.ready() || isReady.call(this, created)) {
       if (this._init$) {
+        const list = this._init$$;
+        if (list) delete this._init$$;
         created.call(defineProperty(this, '_init$', {value: false}));
+        if (list) list.forEach(invoke);
       }
     } else {
+      if (!this.hasOwnProperty('_init$$'))
+        defineProperty(this, '_init$$', {configurable: true, value: []});
       dom.list.push(checkReady.bind(this, created));
     }
+  }
+
+  function invoke(fn) {
+    fn();
   }
 
   function isPrototypeOf(Class) {

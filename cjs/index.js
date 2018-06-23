@@ -74,9 +74,11 @@ class HyperHTMLElement extends HTMLElement {
         'attributeChangedCallback',
         {
           configurable: true,
-          value(name, prev, curr) {
+          value: function aCC(name, prev, curr) {
             if (this._init$) {
               checkReady.call(this, created);
+              if (this._init$)
+                return this._init$$.push(aCC.bind(this, name, prev, curr));
             }
             // ensure setting same value twice
             // won't trigger twice attributeChangedCallback
@@ -97,9 +99,11 @@ class HyperHTMLElement extends HTMLElement {
         'connectedCallback',
         {
           configurable: true,
-          value() {
+          value: function cC() {
             if (this._init$) {
               checkReady.call(this, created);
+              if (this._init$)
+                return this._init$$.push(cC.bind(this));
             }
             if (hasConnect) {
               onConnected.apply(this, arguments);
@@ -282,30 +286,42 @@ Object.defineProperty(exports, '__esModule', {value: true}).default = HyperHTMLE
 // DOMContentLoaded VS created() //
 // ------------------------------//
 const dom = {
-  handleEvent: function (e) {
-    if (dom.ready) {
-      document.removeEventListener(e.type, dom, false);
-      dom.list.splice(0).forEach(function (fn) { fn(); });
+  type: 'DOMContentLoaded',
+  handleEvent() {
+    if (dom.ready()) {
+      document.removeEventListener(dom.type, dom, false);
+      dom.list.splice(0).forEach(invoke);
     }
+    else
+      setTimeout(dom.handleEvent);
   },
-  get ready() {
+  ready() {
     return document.readyState === 'complete';
   },
   list: []
 };
 
-if (!dom.ready) {
-  document.addEventListener('DOMContentLoaded', dom, false);
+if (!dom.ready()) {
+  document.addEventListener(dom.type, dom, false);
 }
 
 function checkReady(created) {
-  if (dom.ready || isReady.call(this, created)) {
+  if (dom.ready() || isReady.call(this, created)) {
     if (this._init$) {
+      const list = this._init$$;
+      if (list) delete this._init$$;
       created.call(defineProperty(this, '_init$', {value: false}));
+      if (list) list.forEach(invoke);
     }
   } else {
+    if (!this.hasOwnProperty('_init$$'))
+      defineProperty(this, '_init$$', {configurable: true, value: []});
     dom.list.push(checkReady.bind(this, created));
   }
+}
+
+function invoke(fn) {
+  fn();
 }
 
 function isPrototypeOf(Class) {
