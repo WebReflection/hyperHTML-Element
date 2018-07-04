@@ -19,6 +19,7 @@
       "$ bundle",
       "$ test.babel",
       "$ minify",
+      "$ umd",
       "$ size",
       "$ test"
     ],
@@ -37,6 +38,14 @@
         "$ fix.es5"
       ]
     },
+    "umd": [
+      [
+        "echo \"(function(A,G){if(typeof define=='function'&&define.amd)define([],G);else",
+        "if(typeof module=='object'&&module.exports)module.exports=G();else",
+        "A.HyperHTMLElement=G()}(typeof self!='undefined'?self:this,function(){\">umd.js;cat",
+        "es5.min.js>>umd.js;echo \"return HyperHTMLElement}));\">>umd.js"
+      ]
+    ],
     "fix": {
       "esm": [
         "sed -i.bak 's/return exports;/return exports.default;/' index.js",
