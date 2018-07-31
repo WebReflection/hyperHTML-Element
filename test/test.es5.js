@@ -78,7 +78,7 @@ var MyInput = function (_HyperHTMLElement2) {
   }], [{
     key: 'observedAttributes',
     get: function get() {
-      return ['value'];
+      return ['value', 'boolean'];
     }
   }]);
 

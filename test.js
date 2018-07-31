@@ -83,7 +83,7 @@ setTimeout(function () {
   class MyInput extends HyperHTMLElement {
 
     static get observedAttributes() {
-      return ['value', 'another-value'];
+      return ['value', 'another-value', 'boolean'];
     }
 
     get value() {
@@ -106,8 +106,13 @@ setTimeout(function () {
   el.value = '123';
   el.anotherValue = '456';
   el.anotherValue = '456';
+  el.boolean = true;
   tressa.assert(el.value === '123' && el.anotherValue === '456', 'attributes set as expected');
-  tressa.assert(el.outerHTML === '<my-input value="123" another-value="456" />', 'input with expected output');
+  tressa.assert(el.outerHTML === '<my-input value="123" another-value="456" boolean />', 'input with expected output');
+
+  el.boolean = false;
+  tressa.assert(el.outerHTML === '<my-input value="123" another-value="456" />', 'input without boolean');
+
 
   // for code coverage sake
   class MyEmptiness extends HyperHTMLElement {}

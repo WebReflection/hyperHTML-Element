@@ -1,106 +1,6 @@
 var HyperHTMLElement = (function (exports) {
   'use strict';
 
-  var G = document.defaultView;
-
-  // Node.CONSTANTS
-  // 'cause some engine has no global Node defined
-  // (i.e. Node, NativeScript, basicHTML ... )
-  var ELEMENT_NODE = 1;
-  var TEXT_NODE = 3;
-  var COMMENT_NODE = 8;
-  var DOCUMENT_FRAGMENT_NODE = 11;
-
-  // HTML related constants
-  var VOID_ELEMENTS = /^area|base|br|col|embed|hr|img|input|keygen|link|menuitem|meta|param|source|track|wbr$/i;
-
-  // SVG related constants
-  var OWNER_SVG_ELEMENT = 'ownerSVGElement';
-  var SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
-
-  // Custom Elements / MutationObserver constants
-  var CONNECTED = 'connected';
-  var DISCONNECTED = 'dis' + CONNECTED;
-
-  // hyperHTML related constants
-  var EXPANDO = '_hyper: ';
-  var SHOULD_USE_TEXT_CONTENT = /^style|textarea$/i;
-  var UID = EXPANDO + (Math.random() * new Date() | 0) + ';';
-  var UIDC = '<!--' + UID + '-->';
-
-  // you know that kind of basics you need to cover
-  // your use case only but you don't want to bloat the library?
-  // There's even a package in here:
-  // https://www.npmjs.com/package/poorlyfills
-
-  // used to dispatch simple events
-  var Event = G.Event;
-  try {
-    new Event('Event');
-  } catch (o_O) {
-    Event = function Event(type) {
-      var e = document.createEvent('Event');
-      e.initEvent(type, false, false);
-      return e;
-    };
-  }
-
-  // used to store template literals
-  /* istanbul ignore next */
-  var Map = G.Map || function Map() {
-    var keys = [],
-        values = [];
-    return {
-      get: function get(obj) {
-        return values[keys.indexOf(obj)];
-      },
-      set: function set(obj, value) {
-        values[keys.push(obj) - 1] = value;
-      }
-    };
-  };
-
-  // used to store wired content
-  var ID = 0;
-  var WeakMap = G.WeakMap || function WeakMap() {
-    var key = UID + ID++;
-    return {
-      get: function get(obj) {
-        return obj[key];
-      },
-      set: function set(obj, value) {
-        Object.defineProperty(obj, key, {
-          configurable: true,
-          value: value
-        });
-      }
-    };
-  };
-
-  // used to store hyper.Components
-  var WeakSet = G.WeakSet || function WeakSet() {
-    var wm = new WeakMap();
-    return {
-      add: function add(obj) {
-        wm.set(obj, true);
-      },
-      has: function has(obj) {
-        return wm.get(obj) === true;
-      }
-    };
-  };
-
-  // used to be sure IE9 or older Androids work as expected
-  var isArray = Array.isArray || function (toString) {
-    return function (arr) {
-      return toString.call(arr) === '[object Array]';
-    };
-  }({}.toString);
-
-  var trim = UID.trim || function () {
-    return this.replace(/^\s+|\s+$/g, '');
-  };
-
   var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) {
     return typeof obj;
   } : function (obj) {
@@ -155,1271 +55,443 @@ var HyperHTMLElement = (function (exports) {
     return call && (typeof call === "object" || typeof call === "function") ? call : self;
   };
 
-  // hyperHTML.Component is a very basic class
-  // able to create Custom Elements like components
-  // including the ability to listen to connect/disconnect
-  // events via onconnect/ondisconnect attributes
-  // Components can be created imperatively or declaratively.
-  // The main difference is that declared components
-  // will not automatically render on setState(...)
-  // to simplify state handling on render.
-  function Component() {
-    return this; // this is needed in Edge !!!
-  }
-
-  // Component is lazily setup because it needs
-  // wire mechanism as lazy content
-  function setup(content) {
-    // there are various weakly referenced variables in here
-    // and mostly are to use Component.for(...) static method.
-    var children = new WeakMap();
-    var create = Object.create;
-    var createEntry = function createEntry(wm, id, component) {
-      wm.set(id, component);
-      return component;
-    };
-    var get$$1 = function get$$1(Class, info, context, id) {
-      var relation = info.get(Class) || relate(Class, info);
-      switch (typeof id === 'undefined' ? 'undefined' : _typeof(id)) {
-        case 'object':
-        case 'function':
-          var wm = relation.w || (relation.w = new WeakMap());
-          return wm.get(id) || createEntry(wm, id, new Class(context));
-        default:
-          var sm = relation.p || (relation.p = create(null));
-          return sm[id] || (sm[id] = new Class(context));
-      }
-    };
-    var relate = function relate(Class, info) {
-      var relation = { w: null, p: null };
-      info.set(Class, relation);
-      return relation;
-    };
-    var set$$1 = function set$$1(context) {
-      var info = new Map();
-      children.set(context, info);
-      return info;
-    };
-    // The Component Class
-    Object.defineProperties(Component, {
-      // Component.for(context[, id]) is a convenient way
-      // to automatically relate data/context to children components
-      // If not created yet, the new Component(context) is weakly stored
-      // and after that same instance would always be returned.
-      for: {
-        configurable: true,
-        value: function value(context, id) {
-          return get$$1(this, children.get(context) || set$$1(context), context, id == null ? 'default' : id);
-        }
-      }
-    });
-    Object.defineProperties(Component.prototype, {
-      // all events are handled with the component as context
-      handleEvent: {
-        value: function value(e) {
-          var ct = e.currentTarget;
-          this['getAttribute' in ct && ct.getAttribute('data-call') || 'on' + e.type](e);
-        }
-      },
-      // components will lazily define html or svg properties
-      // as soon as these are invoked within the .render() method
-      // Such render() method is not provided by the base class
-      // but it must be available through the Component extend.
-      // Declared components could implement a
-      // render(props) method too and use props as needed.
-      html: lazyGetter('html', content),
-      svg: lazyGetter('svg', content),
-      // the state is a very basic/simple mechanism inspired by Preact
-      state: lazyGetter('state', function () {
-        return this.defaultState;
-      }),
-      // it is possible to define a default state that'd be always an object otherwise
-      defaultState: {
-        get: function get$$1() {
-          return {};
-        }
-      },
-      // setting some property state through a new object
-      // or a callback, triggers also automatically a render
-      // unless explicitly specified to not do so (render === false)
-      setState: {
-        value: function value(state, render) {
-          var target = this.state;
-          var source = typeof state === 'function' ? state.call(this, target) : state;
-          for (var key in source) {
-            target[key] = source[key];
-          }if (render !== false) this.render();
-          return this;
-        }
-      }
-    });
-  }
-
-  // instead of a secret key I could've used a WeakMap
-  // However, attaching a property directly will result
-  // into better performance with thousands of components
-  // hanging around, and less memory pressure caused by the WeakMap
-  var lazyGetter = function lazyGetter(type, fn) {
-    var secret = '_' + type + '$';
-    return {
-      get: function get$$1() {
-        return this[secret] || (this[type] = fn.call(this, type));
-      },
-      set: function set$$1(value) {
-        Object.defineProperty(this, secret, { configurable: true, value: value });
-      }
-    };
-  };
-
-  var intents = {};
-  var keys = [];
-  var hasOwnProperty = intents.hasOwnProperty;
-
-  var length = 0;
-
-  var Intent = {
-
-    // hyperHTML.define('intent', (object, update) => {...})
-    // can be used to define a third parts update mechanism
-    // when every other known mechanism failed.
-    // hyper.define('user', info => info.name);
-    // hyper(node)`<p>${{user}}</p>`;
-    define: function define(intent, callback) {
-      if (!(intent in intents)) {
-        length = keys.push(intent);
-      }
-      intents[intent] = callback;
-    },
-
-    // this method is used internally as last resort
-    // to retrieve a value out of an object
-    invoke: function invoke(object, callback) {
-      for (var i = 0; i < length; i++) {
-        var key = keys[i];
-        if (hasOwnProperty.call(object, key)) {
-          return intents[key](object[key], callback);
-        }
-      }
-    }
-  };
-
-  // these are tiny helpers to simplify most common operations needed here
-  var create = function create(node, type) {
-    return doc(node).createElement(type);
-  };
-  var doc = function doc(node) {
-    return node.ownerDocument || node;
-  };
-  var fragment = function fragment(node) {
-    return doc(node).createDocumentFragment();
-  };
-  var text = function text(node, _text) {
-    return doc(node).createTextNode(_text);
-  };
-
-  // TODO:  I'd love to code-cover RegExp too here
-  //        these are fundamental for this library
-
-  var spaces = ' \\f\\n\\r\\t';
-  var almostEverything = '[^ ' + spaces + '\\/>"\'=]+';
-  var attrName = '[ ' + spaces + ']+' + almostEverything;
-  var tagName = '<([A-Za-z]+[A-Za-z0-9:_-]*)((?:';
-  var attrPartials = '(?:=(?:\'[^\']*?\'|"[^"]*?"|<[^>]*?>|' + almostEverything + '))?)';
-
-  var attrSeeker = new RegExp(tagName + attrName + attrPartials + '+)([ ' + spaces + ']*/?>)', 'g');
-
-  var selfClosing = new RegExp(tagName + attrName + attrPartials + '*)([ ' + spaces + ']*/>)', 'g');
-
-  var testFragment = fragment(document);
-
-  // DOM4 node.append(...many)
-  var hasAppend = 'append' in testFragment;
-
-  // detect old browsers without HTMLTemplateElement content support
-  var hasContent = 'content' in create(document, 'template');
-
-  // IE 11 has problems with cloning templates: it "forgets" empty childNodes
-  testFragment.appendChild(text(testFragment, 'g'));
-  testFragment.appendChild(text(testFragment, ''));
-  var hasDoomedCloneNode = testFragment.cloneNode(true).childNodes.length === 1;
-
-  // old browsers need to fallback to cloneNode
-  // Custom Elements V0 and V1 will work polyfilled
-  // but native implementations need importNode instead
-  // (specially Chromium and its old V0 implementation)
-  var hasImportNode = 'importNode' in document;
-
-  // appends an array of nodes
-  // to a generic node/fragment
-  // When available, uses append passing all arguments at once
-  // hoping that's somehow faster, even if append has more checks on type
-  var append = hasAppend ? function (node, childNodes) {
-    node.append.apply(node, childNodes);
-  } : function (node, childNodes) {
-    var length = childNodes.length;
-    for (var i = 0; i < length; i++) {
-      node.appendChild(childNodes[i]);
-    }
-  };
-
-  var findAttributes = new RegExp('(' + attrName + '=)([\'"]?)' + UIDC + '\\2', 'gi');
-  var comments = function comments($0, $1, $2, $3) {
-    return '<' + $1 + $2.replace(findAttributes, replaceAttributes) + $3;
-  };
-  var replaceAttributes = function replaceAttributes($0, $1, $2) {
-    return $1 + ($2 || '"') + UID + ($2 || '"');
-  };
-
-  // given a node and a generic HTML content,
-  // create either an SVG or an HTML fragment
-  // where such content will be injected
-  var createFragment = function createFragment(node, html) {
-    return (OWNER_SVG_ELEMENT in node ? SVGFragment : HTMLFragment)(node, html.replace(attrSeeker, comments));
-  };
-
-  // IE/Edge shenanigans proof cloneNode
-  // it goes through all nodes manually
-  // instead of relying the engine to suddenly
-  // merge nodes together
-  var cloneNode = hasDoomedCloneNode ? function (node) {
-    var clone = node.cloneNode();
-    var childNodes = node.childNodes ||
-    // this is an excess of caution
-    // but some node, in IE, might not
-    // have childNodes property.
-    // The following fallback ensure working code
-    // in older IE without compromising performance
-    // or any other browser/engine involved.
-    /* istanbul ignore next */
-    [];
-    var length = childNodes.length;
-    for (var i = 0; i < length; i++) {
-      clone.appendChild(cloneNode(childNodes[i]));
-    }
-    return clone;
-  } :
-  // the following ignore is due code-coverage
-  // combination of not having document.importNode
-  // but having a working node.cloneNode.
-  // This shenario is common on older Android/WebKit browsers
-  // but basicHTML here tests just two major cases:
-  // with document.importNode or with broken cloneNode.
-  /* istanbul ignore next */
-  function (node) {
-    return node.cloneNode(true);
-  };
-
-  // IE and Edge do not support children in SVG nodes
-  /* istanbul ignore next */
-  var getChildren = function getChildren(node) {
-    var children = [];
-    var childNodes = node.childNodes;
-    var length = childNodes.length;
-    for (var i = 0; i < length; i++) {
-      if (childNodes[i].nodeType === ELEMENT_NODE) children.push(childNodes[i]);
-    }
-    return children;
-  };
-
-  // used to import html into fragments
-  var importNode = hasImportNode ? function (doc$$1, node) {
-    return doc$$1.importNode(node, true);
-  } : function (doc$$1, node) {
-    return cloneNode(node);
-  };
-
-  // just recycling a one-off array to use slice
-  // in every needed place
-  var slice = [].slice;
-
-  // lazy evaluated, returns the unique identity
-  // of a template literal, as tempalte literal itself.
-  // By default, ES2015 template literals are unique
-  // tag`a${1}z` === tag`a${2}z`
-  // even if interpolated values are different
-  // the template chunks are in a frozen Array
-  // that is identical each time you use the same
-  // literal to represent same static content
-  // around its own interpolations.
-  var unique = function unique(template) {
-    return _TL(template);
-  };
-
-  // TL returns a unique version of the template
-  // it needs lazy feature detection
-  // (cannot trust literals with transpiled code)
-  var _TL = function TL(t) {
-    if (
-    // TypeScript template literals are not standard
-    t.propertyIsEnumerable('raw') ||
-    // Firefox < 55 has not standard implementation neither
-    /Firefox\/(\d+)/.test((G.navigator || {}).userAgent) && parseFloat(RegExp.$1) < 55) {
-      var T = {};
-      _TL = function TL(t) {
-        var k = '^' + t.join('^');
-        return T[k] || (T[k] = t);
+  /*! (c) Andrea Giammarchi (ISC) */var hyperHTML = function (e) {
+    var t = document.defaultView,
+        r = /^area|base|br|col|embed|hr|img|input|keygen|link|menuitem|meta|param|source|track|wbr$/i,
+        l = "ownerSVGElement",
+        c = "http://www.w3.org/2000/svg",
+        s = "connected",
+        f = "dis" + s,
+        d = /^style|textarea$/i,
+        b = "_hyper: " + (Math.random() * new Date() | 0) + ";",
+        h = "\x3c!--" + b + "--\x3e",
+        v = t.Event;try {
+      new v("Event");
+    } catch (e) {
+      v = function v(e) {
+        var t = document.createEvent("Event");return t.initEvent(e, !1, !1), t;
       };
-    } else {
-      // make TL an identity like function
-      _TL = function TL(t) {
-        return t;
-      };
-    }
-    return _TL(t);
-  };
-
-  // used to store templates objects
-  // since neither Map nor WeakMap are safe
-  var TemplateMap = function TemplateMap() {
-    try {
-      var wm = new WeakMap();
-      var o_O = Object.freeze([]);
-      wm.set(o_O, true);
-      if (!wm.get(o_O)) throw o_O;
-      return wm;
-    } catch (o_O) {
-      // inevitable legacy code leaks due
-      // https://github.com/tc39/ecma262/pull/890
-      return new Map();
-    }
-  };
-
-  // create document fragments via native template
-  // with a fallback for browsers that won't be able
-  // to deal with some injected element such <td> or others
-  var HTMLFragment = hasContent ? function (node, html) {
-    var container = create(node, 'template');
-    container.innerHTML = html;
-    return container.content;
-  } : function (node, html) {
-    var container = create(node, 'template');
-    var content = fragment(node);
-    if (/^[^\S]*?<(col(?:group)?|t(?:head|body|foot|r|d|h))/i.test(html)) {
-      var selector = RegExp.$1;
-      container.innerHTML = '<table>' + html + '</table>';
-      append(content, slice.call(container.querySelectorAll(selector)));
-    } else {
-      container.innerHTML = html;
-      append(content, slice.call(container.childNodes));
-    }
-    return content;
-  };
-
-  // creates SVG fragment with a fallback for IE that needs SVG
-  // within the HTML content
-  var SVGFragment = hasContent ? function (node, html) {
-    var content = fragment(node);
-    var container = doc(node).createElementNS(SVG_NAMESPACE, 'svg');
-    container.innerHTML = html;
-    append(content, slice.call(container.childNodes));
-    return content;
-  } : function (node, html) {
-    var content = fragment(node);
-    var container = create(node, 'div');
-    container.innerHTML = '<svg xmlns="' + SVG_NAMESPACE + '">' + html + '</svg>';
-    append(content, slice.call(container.firstChild.childNodes));
-    return content;
-  };
-
-  function Wire(childNodes) {
-    this.childNodes = childNodes;
-    this.length = childNodes.length;
-    this.first = childNodes[0];
-    this.last = childNodes[this.length - 1];
-  }
-
-  // when a wire is inserted, all its nodes will follow
-  Wire.prototype.insert = function insert() {
-    var df = fragment(this.first);
-    append(df, this.childNodes);
-    return df;
-  };
-
-  // when a wire is removed, all its nodes must be removed as well
-  Wire.prototype.remove = function remove() {
-    var first = this.first;
-    var last = this.last;
-    if (this.length === 2) {
-      last.parentNode.removeChild(last);
-    } else {
-      var range = doc(first).createRange();
-      range.setStartBefore(this.childNodes[1]);
-      range.setEndAfter(last);
-      range.deleteContents();
-    }
-    return first;
-  };
-
-  // every template literal interpolation indicates
-  // a precise target in the DOM the template is representing.
-  // `<p id=${'attribute'}>some ${'content'}</p>`
-  // hyperHTML finds only once per template literal,
-  // hence once per entire application life-cycle,
-  // all nodes that are related to interpolations.
-  // These nodes are stored as indexes used to retrieve,
-  // once per upgrade, nodes that will change on each future update.
-  // A path example is [2, 0, 1] representing the operation:
-  // node.childNodes[2].childNodes[0].childNodes[1]
-  // Attributes are addressed via their owner node and their name.
-  var createPath = function createPath(node) {
-    var path = [];
-    var parentNode = void 0;
-    switch (node.nodeType) {
-      case ELEMENT_NODE:
-      case DOCUMENT_FRAGMENT_NODE:
-        parentNode = node;
-        break;
-      case COMMENT_NODE:
-        parentNode = node.parentNode;
-        prepend(path, parentNode, node);
-        break;
-      default:
-        parentNode = node.ownerElement;
-        break;
-    }
-    for (node = parentNode; parentNode = parentNode.parentNode; node = parentNode) {
-      prepend(path, parentNode, node);
-    }
-    return path;
-  };
-
-  var prepend = function prepend(path, parent, node) {
-    path.unshift(path.indexOf.call(parent.childNodes, node));
-  };
-
-  var Path = {
-    create: function create(type, node, name) {
-      return { type: type, name: name, node: node, path: createPath(node) };
+    }var n,
+        i = t.Map || function () {
+      var n = [],
+          r = [];return { get: function get$$1(e) {
+          return r[n.indexOf(e)];
+        }, set: function set$$1(e, t) {
+          r[n.push(e) - 1] = t;
+        } };
     },
-    find: function find(node, path) {
-      var length = path.length;
-      for (var i = 0; i < length; i++) {
-        node = node.childNodes[path[i]];
-      }
-      return node;
-    }
-  };
-
-  // from https://github.com/developit/preact/blob/33fc697ac11762a1cb6e71e9847670d047af7ce5/src/constants.js
-  var IS_NON_DIMENSIONAL = /acit|ex(?:s|g|n|p|$)|rph|ows|mnc|ntw|ine[ch]|zoo|^ord/i;
-
-  // style is handled as both string and object
-  // even if the target is an SVG element (consistency)
-  var Style = (function (node, original, isSVG) {
-    if (isSVG) {
-      var style = original.cloneNode(true);
-      style.value = '';
-      node.setAttributeNode(style);
-      return update(style, isSVG);
-    }
-    return update(node.style, isSVG);
-  });
-
-  // the update takes care or changing/replacing
-  // only properties that are different or
-  // in case of string, the whole node
-  var update = function update(style, isSVG) {
-    var oldType = void 0,
-        oldValue = void 0;
-    return function (newValue) {
-      switch (typeof newValue === 'undefined' ? 'undefined' : _typeof(newValue)) {
-        case 'object':
-          if (newValue) {
-            if (oldType === 'object') {
-              if (!isSVG) {
-                if (oldValue !== newValue) {
-                  for (var key in oldValue) {
-                    if (!(key in newValue)) {
-                      style[key] = '';
-                    }
-                  }
-                }
-              }
-            } else {
-              if (isSVG) style.value = '';else style.cssText = '';
-            }
-            var info = isSVG ? {} : style;
-            for (var _key in newValue) {
-              var value = newValue[_key];
-              info[_key] = typeof value === 'number' && !IS_NON_DIMENSIONAL.test(_key) ? value + 'px' : value;
-            }
-            oldType = 'object';
-            if (isSVG) style.value = toStyle(oldValue = info);else oldValue = newValue;
-            break;
-          }
-        default:
-          if (oldValue != newValue) {
-            oldType = 'string';
-            oldValue = newValue;
-            if (isSVG) style.value = newValue || '';else style.cssText = newValue || '';
-          }
-          break;
-      }
-    };
-  };
-
-  var hyphen = /([^A-Z])([A-Z]+)/g;
-  var ized = function ized($0, $1, $2) {
-    return $1 + '-' + $2.toLowerCase();
-  };
-  var toStyle = function toStyle(object) {
-    var css = [];
-    for (var key in object) {
-      css.push(key.replace(hyphen, ized), ':', object[key], ';');
-    }
-    return css.join('');
-  };
-
-  /* AUTOMATICALLY IMPORTED, DO NOT MODIFY */
-  /*! (c) 2017 Andrea Giammarchi (ISC) */
-
-  /**
-   * This code is a revisited port of the snabbdom vDOM diffing logic,
-   * the same that fuels as fork Vue.js or other libraries.
-   * @credits https://github.com/snabbdom/snabbdom
-   */
-
-  var identity = function identity(O) {
-    return O;
-  };
-
-  var remove = function remove(get, parentNode, before, after) {
-    if (after == null) {
-      parentNode.removeChild(get(before, -1));
-    } else {
-      var range = parentNode.ownerDocument.createRange();
-      range.setStartBefore(get(before, -1));
-      range.setEndAfter(get(after, -1));
-      range.deleteContents();
-    }
-  };
-
-  var domdiff = function domdiff(parentNode, // where changes happen
-  currentNodes, // Array of current items/nodes
-  futureNodes, // Array of future items/nodes
-  getNode, // optional way to retrieve a node from an item
-  beforeNode // optional item/node to use as insertBefore delimiter
-  ) {
-    var get = getNode || identity;
-    var before = beforeNode == null ? null : get(beforeNode, 0);
-    var currentStart = 0,
-        futureStart = 0;
-    var currentEnd = currentNodes.length - 1;
-    var currentStartNode = currentNodes[0];
-    var currentEndNode = currentNodes[currentEnd];
-    var futureEnd = futureNodes.length - 1;
-    var futureStartNode = futureNodes[0];
-    var futureEndNode = futureNodes[futureEnd];
-    while (currentStart <= currentEnd && futureStart <= futureEnd) {
-      if (currentStartNode == null) {
-        currentStartNode = currentNodes[++currentStart];
-      } else if (currentEndNode == null) {
-        currentEndNode = currentNodes[--currentEnd];
-      } else if (futureStartNode == null) {
-        futureStartNode = futureNodes[++futureStart];
-      } else if (futureEndNode == null) {
-        futureEndNode = futureNodes[--futureEnd];
-      } else if (currentStartNode == futureStartNode) {
-        currentStartNode = currentNodes[++currentStart];
-        futureStartNode = futureNodes[++futureStart];
-      } else if (currentEndNode == futureEndNode) {
-        currentEndNode = currentNodes[--currentEnd];
-        futureEndNode = futureNodes[--futureEnd];
-      } else if (currentStartNode == futureEndNode) {
-        parentNode.insertBefore(get(currentStartNode, 1), get(currentEndNode, -0).nextSibling);
-        currentStartNode = currentNodes[++currentStart];
-        futureEndNode = futureNodes[--futureEnd];
-      } else if (currentEndNode == futureStartNode) {
-        parentNode.insertBefore(get(currentEndNode, 1), get(currentStartNode, 0));
-        currentEndNode = currentNodes[--currentEnd];
-        futureStartNode = futureNodes[++futureStart];
-      } else {
-        var index = currentNodes.indexOf(futureStartNode);
-        if (index < 0) {
-          parentNode.insertBefore(get(futureStartNode, 1), get(currentStartNode, 0));
-          futureStartNode = futureNodes[++futureStart];
-        } else {
-          var i = index;
-          var f = futureStart;
-          while (i <= currentEnd && f <= futureEnd && currentNodes[i] === futureNodes[f]) {
-            i++;
-            f++;
-          }
-          if (1 < i - index) {
-            if (--index === currentStart) {
-              parentNode.removeChild(get(currentStartNode, -1));
-            } else {
-              remove(get, parentNode, currentStartNode, currentNodes[index]);
-            }
-            currentStart = i;
-            futureStart = f;
-            currentStartNode = currentNodes[i];
-            futureStartNode = futureNodes[f];
-          } else {
-            var el = currentNodes[index];
-            currentNodes[index] = null;
-            parentNode.insertBefore(get(el, 1), get(currentStartNode, 0));
-            futureStartNode = futureNodes[++futureStart];
-          }
+        o = 0,
+        p = t.WeakMap || function () {
+      var n = b + o++;return { get: function get$$1(e) {
+          return e[n];
+        }, set: function set$$1(e, t) {
+          Object.defineProperty(e, n, { configurable: !0, value: t });
+        } };
+    },
+        a = t.WeakSet || function () {
+      var t = new p();return { add: function add(e) {
+          t.set(e, !0);
+        }, has: function has(e) {
+          return !0 === t.get(e);
+        } };
+    },
+        m = Array.isArray || (n = {}.toString, function (e) {
+      return "[object Array]" === n.call(e);
+    }),
+        g = b.trim || function () {
+      return this.replace(/^\s+|\s+$/g, "");
+    };function w() {
+      return this;
+    }var u = function u(e, t) {
+      var n = "_" + e + "$";return { get: function get$$1() {
+          return this[n] || y(this, n, t.call(this, e));
+        }, set: function set$$1(e) {
+          y(this, n, e);
+        } };
+    },
+        y = function y(e, t, n) {
+      return Object.defineProperty(e, t, { configurable: !0, value: "function" == typeof n ? function () {
+          return e._wire$ = n.apply(this, arguments);
+        } : n })[t];
+    },
+        N = {},
+        x = {},
+        E = [],
+        C = x.hasOwnProperty,
+        j = 0,
+        A = { attributes: N, define: function define(e, t) {
+        e.indexOf("-") < 0 ? (e in x || (j = E.push(e)), x[e] = t) : N[e] = t;
+      }, invoke: function invoke(e, t) {
+        for (var n = 0; n < j; n++) {
+          var r = E[n];if (C.call(e, r)) return x[r](e[r], t);
         }
+      } },
+        k = function k(e, t) {
+      return T(e).createElement(t);
+    },
+        T = function T(e) {
+      return e.ownerDocument || e;
+    },
+        O = function O(e) {
+      return T(e).createDocumentFragment();
+    },
+        S = function S(e, t) {
+      return T(e).createTextNode(t);
+    },
+        L = " \\f\\n\\r\\t",
+        M = "[^ " + L + "\\/>\"'=]+",
+        $ = "[ " + L + "]+" + M,
+        D = "<([A-Za-z]+[A-Za-z0-9:_-]*)((?:",
+        P = "(?:=(?:'[^']*?'|\"[^\"]*?\"|<[^>]*?>|" + M + "))?)",
+        B = new RegExp(D + $ + P + "+)([ " + L + "]*/?>)", "g"),
+        R = new RegExp(D + $ + P + "*)([ " + L + "]*/>)", "g"),
+        _ = O(document),
+        H = "append" in _,
+        z = "content" in k(document, "template");_.appendChild(S(_, "g")), _.appendChild(S(_, ""));var F = 1 === _.cloneNode(!0).childNodes.length,
+        Z = "importNode" in document,
+        I = H ? function (e, t) {
+      e.append.apply(e, t);
+    } : function (e, t) {
+      for (var n = t.length, r = 0; r < n; r++) {
+        e.appendChild(t[r]);
       }
-    }
-    if (currentStart <= currentEnd || futureStart <= futureEnd) {
-      if (currentStart > currentEnd) {
-        var pin = futureNodes[futureEnd + 1];
-        var place = pin == null ? before : get(pin, 0);
-        if (futureStart === futureEnd) {
-          parentNode.insertBefore(get(futureNodes[futureStart], 1), place);
-        } else {
-          var fragment = parentNode.ownerDocument.createDocumentFragment();
-          while (futureStart <= futureEnd) {
-            fragment.appendChild(get(futureNodes[futureStart++], 1));
-          }
-          parentNode.insertBefore(fragment, place);
-        }
-      } else {
-        if (currentNodes[currentStart] == null) currentStart++;
-        if (currentStart === currentEnd) {
-          parentNode.removeChild(get(currentNodes[currentStart], -1));
-        } else {
-          remove(get, parentNode, currentNodes[currentStart], currentNodes[currentEnd]);
-        }
-      }
-    }
-    return futureNodes;
-  };
-
-  // hyper.Component have a connected/disconnected
-  // mechanism provided by MutationObserver
-  // This weak set is used to recognize components
-  // as DOM node that needs to trigger connected/disconnected events
-  var components = new WeakSet();
-
-  // a basic dictionary used to filter already cached attributes
-  // while looking for special hyperHTML values.
-  function Cache() {}
-  Cache.prototype = Object.create(null);
-
-  // returns an intent to explicitly inject content as html
-  var asHTML = function asHTML(html) {
-    return { html: html };
-  };
-
-  // returns nodes from wires and components
-  var asNode = function asNode(item, i) {
-    return 'ELEMENT_NODE' in item ? item : item.constructor === Wire ?
-    // in the Wire case, the content can be
-    // removed, post-pended, inserted, or pre-pended and
-    // all these cases are handled by domdiff already
-    /* istanbul ignore next */
-    1 / i < 0 ? i ? item.remove() : item.last : i ? item.insert() : item.first : asNode(item.render(), i);
-  };
-
-  // returns true if domdiff can handle the value
-  var canDiff = function canDiff(value) {
-    return 'ELEMENT_NODE' in value || value instanceof Wire || value instanceof Component;
-  };
-
-  // updates are created once per context upgrade
-  // within the main render function (../hyper/render.js)
-  // These are an Array of callbacks to invoke passing
-  // each interpolation value.
-  // Updates can be related to any kind of content,
-  // attributes, or special text-only cases such <style>
-  // elements or <textarea>
-  var create$1 = function create$$1(root, paths) {
-    var updates = [];
-    var length = paths.length;
-    for (var i = 0; i < length; i++) {
-      var info = paths[i];
-      var node = Path.find(root, info.path);
-      switch (info.type) {
-        case 'any':
-          updates.push(setAnyContent(node, []));
-          break;
-        case 'attr':
-          updates.push(setAttribute(node, info.name, info.node));
-          break;
-        case 'text':
-          updates.push(setTextContent(node));
-          node.textContent = '';
-          break;
-      }
-    }
-    return updates;
-  };
-
-  // finding all paths is a one-off operation performed
-  // when a new template literal is used.
-  // The goal is to map all target nodes that will be
-  // used to update content/attributes every time
-  // the same template literal is used to create content.
-  // The result is a list of paths related to the template
-  // with all the necessary info to create updates as
-  // list of callbacks that target directly affected nodes.
-  var find = function find(node, paths, parts) {
-    var childNodes = node.childNodes;
-    var length = childNodes.length;
-    for (var i = 0; i < length; i++) {
-      var child = childNodes[i];
-      switch (child.nodeType) {
-        case ELEMENT_NODE:
-          findAttributes$1(child, paths, parts);
-          find(child, paths, parts);
-          break;
-        case COMMENT_NODE:
-          if (child.textContent === UID) {
-            parts.shift();
-            paths.push(
-            // basicHTML or other non standard engines
-            // might end up having comments in nodes
-            // where they shouldn't, hence this check.
-            SHOULD_USE_TEXT_CONTENT.test(node.nodeName) ? Path.create('text', node) : Path.create('any', child));
-          }
-          break;
-        case TEXT_NODE:
-          // the following ignore is actually covered by browsers
-          // only basicHTML ends up on previous COMMENT_NODE case
-          // instead of TEXT_NODE because it knows nothing about
-          // special style or textarea behavior
-          /* istanbul ignore if */
-          if (SHOULD_USE_TEXT_CONTENT.test(node.nodeName) && trim.call(child.textContent) === UIDC) {
-            parts.shift();
-            paths.push(Path.create('text', node));
-          }
-          break;
-      }
-    }
-  };
-
-  // attributes are searched via unique hyperHTML id value.
-  // Despite HTML being case insensitive, hyperHTML is able
-  // to recognize attributes by name in a caseSensitive way.
-  // This plays well with Custom Elements definitions
-  // and also with XML-like environments, without trusting
-  // the resulting DOM but the template literal as the source of truth.
-  // IE/Edge has a funny bug with attributes and these might be duplicated.
-  // This is why there is a cache in charge of being sure no duplicated
-  // attributes are ever considered in future updates.
-  var findAttributes$1 = function findAttributes(node, paths, parts) {
-    var cache = new Cache();
-    var attributes = node.attributes;
-    var array = slice.call(attributes);
-    var remove = [];
-    var length = array.length;
-    for (var i = 0; i < length; i++) {
-      var attribute = array[i];
-      if (attribute.value === UID) {
-        var name = attribute.name;
-        // the following ignore is covered by IE
-        // and the IE9 double viewBox test
-        /* istanbul ignore else */
-        if (!(name in cache)) {
-          var realName = parts.shift().replace(/^(?:|[\S\s]*?\s)(\S+?)=['"]?$/, '$1');
-          cache[name] = attributes[realName] ||
-          // the following ignore is covered by browsers
-          // while basicHTML is already case-sensitive
-          /* istanbul ignore next */
-          attributes[realName.toLowerCase()];
-          paths.push(Path.create('attr', cache[name], realName));
-        }
-        remove.push(attribute);
-      }
-    }
-    var len = remove.length;
-    for (var _i = 0; _i < len; _i++) {
-      // Edge HTML bug #16878726
-      var _attribute = remove[_i];
-      if (/^id$/i.test(_attribute.name)) node.removeAttribute(_attribute.name);
-      // standard browsers would work just fine here
-      else node.removeAttributeNode(remove[_i]);
-    }
-
-    // This is a very specific Firefox/Safari issue
-    // but since it should be a not so common pattern,
-    // it's probably worth patching regardless.
-    // Basically, scripts created through strings are death.
-    // You need to create fresh new scripts instead.
-    // TODO: is there any other node that needs such nonsense?
-    var nodeName = node.nodeName;
-    if (/^script$/i.test(nodeName)) {
-      // this used to be like that
-      // const script = createElement(node, nodeName);
-      // then Edge arrived and decided that scripts created
-      // through template documents aren't worth executing
-      // so it became this ... hopefully it won't hurt in the wild
-      var script = document.createElement(nodeName);
-      for (var _i2 = 0; _i2 < attributes.length; _i2++) {
-        script.setAttributeNode(attributes[_i2].cloneNode(true));
-      }
-      script.textContent = node.textContent;
-      node.parentNode.replaceChild(script, node);
-    }
-  };
-
-  // when a Promise is used as interpolation value
-  // its result must be parsed once resolved.
-  // This callback is in charge of understanding what to do
-  // with a returned value once the promise is resolved.
-  var invokeAtDistance = function invokeAtDistance(value, callback) {
-    callback(value.placeholder);
-    if ('text' in value) {
-      Promise.resolve(value.text).then(String).then(callback);
-    } else if ('any' in value) {
-      Promise.resolve(value.any).then(callback);
-    } else if ('html' in value) {
-      Promise.resolve(value.html).then(asHTML).then(callback);
-    } else {
-      Promise.resolve(Intent.invoke(value, callback)).then(callback);
-    }
-  };
-
-  // quick and dirty way to check for Promise/ish values
-  var isPromise_ish = function isPromise_ish(value) {
-    return value != null && 'then' in value;
-  };
-
-  // in a hyper(node)`<div>${content}</div>` case
-  // everything could happen:
-  //  * it's a JS primitive, stored as text
-  //  * it's null or undefined, the node should be cleaned
-  //  * it's a component, update the content by rendering it
-  //  * it's a promise, update the content once resolved
-  //  * it's an explicit intent, perform the desired operation
-  //  * it's an Array, resolve all values if Promises and/or
-  //    update the node with the resulting list of content
-  var setAnyContent = function setAnyContent(node, childNodes) {
-    var fastPath = false;
-    var oldValue = void 0;
-    var anyContent = function anyContent(value) {
-      switch (typeof value === 'undefined' ? 'undefined' : _typeof(value)) {
-        case 'string':
-        case 'number':
-        case 'boolean':
-          if (fastPath) {
-            if (oldValue !== value) {
-              oldValue = value;
-              childNodes[0].textContent = value;
-            }
-          } else {
-            fastPath = true;
-            oldValue = value;
-            childNodes = domdiff(node.parentNode, childNodes, [text(node, value)], asNode, node);
-          }
-          break;
-        case 'object':
-        case 'undefined':
-          if (value == null) {
-            fastPath = false;
-            childNodes = domdiff(node.parentNode, childNodes, [], asNode, node);
-            break;
-          }
-        default:
-          fastPath = false;
-          oldValue = value;
-          if (isArray(value)) {
-            if (value.length === 0) {
-              if (childNodes.length) {
-                childNodes = domdiff(node.parentNode, childNodes, [], asNode, node);
-              }
-            } else {
-              switch (_typeof(value[0])) {
-                case 'string':
-                case 'number':
-                case 'boolean':
-                  anyContent({ html: value });
-                  break;
-                case 'object':
-                  if (isArray(value[0])) {
-                    value = value.concat.apply([], value);
-                  }
-                  if (isPromise_ish(value[0])) {
-                    Promise.all(value).then(anyContent);
-                    break;
-                  }
-                default:
-                  childNodes = domdiff(node.parentNode, childNodes, value, asNode, node);
-                  break;
-              }
-            }
-          } else if (canDiff(value)) {
-            childNodes = domdiff(node.parentNode, childNodes, value.nodeType === DOCUMENT_FRAGMENT_NODE ? slice.call(value.childNodes) : [value], asNode, node);
-          } else if (isPromise_ish(value)) {
-            value.then(anyContent);
-          } else if ('placeholder' in value) {
-            invokeAtDistance(value, anyContent);
-          } else if ('text' in value) {
-            anyContent(String(value.text));
-          } else if ('any' in value) {
-            anyContent(value.any);
-          } else if ('html' in value) {
-            childNodes = domdiff(node.parentNode, childNodes, slice.call(createFragment(node, [].concat(value.html).join('')).childNodes), asNode, node);
-          } else if ('length' in value) {
-            anyContent(slice.call(value));
-          } else {
-            anyContent(Intent.invoke(value, anyContent));
-          }
-          break;
-      }
-    };
-    return anyContent;
-  };
-
-  // there are four kind of attributes, and related behavior:
-  //  * events, with a name starting with `on`, to add/remove event listeners
-  //  * special, with a name present in their inherited prototype, accessed directly
-  //  * regular, accessed through get/setAttribute standard DOM methods
-  //  * style, the only regular attribute that also accepts an object as value
-  //    so that you can style=${{width: 120}}. In this case, the behavior has been
-  //    fully inspired by Preact library and its simplicity.
-  var setAttribute = function setAttribute(node, name, original) {
-    var isSVG = OWNER_SVG_ELEMENT in node;
-    var oldValue = void 0;
-    // if the attribute is the style one
-    // handle it differently from others
-    if (name === 'style') {
-      return Style(node, original, isSVG);
-    }
-    // the name is an event one,
-    // add/remove event listeners accordingly
-    else if (/^on/.test(name)) {
-        var type = name.slice(2);
-        if (type === CONNECTED || type === DISCONNECTED) {
-          if (notObserving) {
-            notObserving = false;
-            observe();
-          }
-          components.add(node);
-        } else if (name.toLowerCase() in node) {
-          type = type.toLowerCase();
-        }
-        return function (newValue) {
-          if (oldValue !== newValue) {
-            if (oldValue) node.removeEventListener(type, oldValue, false);
-            oldValue = newValue;
-            if (newValue) node.addEventListener(type, newValue, false);
-          }
+    },
+        V = new RegExp("(" + $ + "=)(['\"]?)" + h + "\\2", "gi"),
+        W = function W(e, t, n, r) {
+      return "<" + t + n.replace(V, q) + r;
+    },
+        q = function q(e, t, n) {
+      return t + (n || '"') + b + (n || '"');
+    },
+        G = function G(e, t) {
+      return (l in e ? ee : Y)(e, t.replace(B, W));
+    },
+        J = F ? function (e) {
+      for (var t = e.cloneNode(), n = e.childNodes || [], r = n.length, i = 0; i < r; i++) {
+        t.appendChild(J(n[i]));
+      }return t;
+    } : function (e) {
+      return e.cloneNode(!0);
+    },
+        K = Z ? function (e, t) {
+      return e.importNode(t, !0);
+    } : function (e, t) {
+      return J(t);
+    },
+        Q = [].slice,
+        U = function U(e) {
+      return _X(e);
+    },
+        _X = function X(e) {
+      if (e.propertyIsEnumerable("raw") || /Firefox\/(\d+)/.test((t.navigator || {}).userAgent) && parseFloat(RegExp.$1) < 55) {
+        var n = {};_X = function X(e) {
+          var t = "^" + e.join("^");return n[t] || (n[t] = e);
         };
-      }
-      // the attribute is special ('value' in input)
-      // and it's not SVG *or* the name is exactly data,
-      // in this case assign the value directly
-      else if (name === 'data' || !isSVG && name in node) {
-          return function (newValue) {
-            if (oldValue !== newValue) {
-              oldValue = newValue;
-              if (node[name] !== newValue) {
-                node[name] = newValue;
-                if (newValue == null) {
-                  node.removeAttribute(name);
+      } else _X = function X(e) {
+        return e;
+      };return _X(e);
+    },
+        Y = z ? function (e, t) {
+      var n = k(e, "template");return n.innerHTML = t, n.content;
+    } : function (e, t) {
+      var n = k(e, "template"),
+          r = O(e);if (/^[^\S]*?<(col(?:group)?|t(?:head|body|foot|r|d|h))/i.test(t)) {
+        var i = RegExp.$1;n.innerHTML = "<table>" + t + "</table>", I(r, Q.call(n.querySelectorAll(i)));
+      } else n.innerHTML = t, I(r, Q.call(n.childNodes));return r;
+    },
+        ee = z ? function (e, t) {
+      var n = O(e),
+          r = T(e).createElementNS(c, "svg");return r.innerHTML = t, I(n, Q.call(r.childNodes)), n;
+    } : function (e, t) {
+      var n = O(e),
+          r = k(e, "div");return r.innerHTML = '<svg xmlns="' + c + '">' + t + "</svg>", I(n, Q.call(r.firstChild.childNodes)), n;
+    };function te(e) {
+      this.childNodes = e, this.length = e.length, this.first = e[0], this.last = e[this.length - 1];
+    }te.prototype.insert = function () {
+      var e = O(this.first);return I(e, this.childNodes), e;
+    }, te.prototype.remove = function () {
+      var e = this.first,
+          t = this.last;if (2 === this.length) t.parentNode.removeChild(t);else {
+        var n = T(e).createRange();n.setStartBefore(this.childNodes[1]), n.setEndAfter(t), n.deleteContents();
+      }return e;
+    };var ne = function ne(e, t, n) {
+      e.unshift(e.indexOf.call(t.childNodes, n));
+    },
+        re = function re(e, t, n) {
+      return { type: e, name: n, node: t, path: function (e) {
+          var t = [],
+              n = void 0;switch (e.nodeType) {case 1:case 11:
+              n = e;break;case 8:
+              n = e.parentNode, ne(t, n, e);break;default:
+              n = e.ownerElement;}for (e = n; n = n.parentNode; e = n) {
+            ne(t, n, e);
+          }return t;
+        }(t) };
+    },
+        ie = function ie(e, t) {
+      for (var n = t.length, r = 0; r < n; r++) {
+        e = e.childNodes[t[r]];
+      }return e;
+    },
+        oe = /acit|ex(?:s|g|n|p|$)|rph|ows|mnc|ntw|ine[ch]|zoo|^ord/i,
+        ae = function ae(o, a) {
+      var u = void 0,
+          l = void 0;return function (e) {
+        switch (typeof e === "undefined" ? "undefined" : _typeof(e)) {case "object":
+            if (e) {
+              if ("object" === u) {
+                if (!a && l !== e) for (var t in l) {
+                  t in e || (o[t] = "");
                 }
-              }
+              } else a ? o.value = "" : o.cssText = "";var n = a ? {} : o;for (var r in e) {
+                var i = e[r];n[r] = "number" != typeof i || oe.test(r) ? i : i + "px";
+              }u = "object", a ? o.value = ce(l = n) : l = e;break;
+            }default:
+            l != e && (u = "string", l = e, a ? o.value = e || "" : o.cssText = e || "");}
+      };
+    },
+        ue = /([^A-Z])([A-Z]+)/g,
+        le = function le(e, t, n) {
+      return t + "-" + n.toLowerCase();
+    },
+        ce = function ce(e) {
+      var t = [];for (var n in e) {
+        t.push(n.replace(ue, le), ":", e[n], ";");
+      }return t.join("");
+    },
+        se = function se(e, t) {
+      return e == t;
+    },
+        fe = function fe(e) {
+      return e;
+    },
+        de = function de(e, t, n, r) {
+      if (null == r) t.removeChild(e(n, -1));else {
+        var i = t.ownerDocument.createRange();i.setStartBefore(e(n, -1)), i.setEndAfter(e(r, -1)), i.deleteContents();
+      }
+    },
+        he = function he(e, t, n, r) {
+      r || (r = {});for (var i = r.compare || se, o = r.node || fe, a = null == r.before ? null : o(r.before, 0), u = 0, l = 0, c = t.length - 1, s = t[0], f = t[c], d = n.length - 1, h = n[0], v = n[d]; u <= c && l <= d;) {
+        if (null == s) s = t[++u];else if (null == f) f = t[--c];else if (null == h) h = n[++l];else if (null == v) v = n[--d];else if (i(s, h)) s = t[++u], h = n[++l];else if (i(f, v)) f = t[--c], v = n[--d];else if (i(s, v)) e.insertBefore(o(s, 1), o(f, -0).nextSibling), s = t[++u], v = n[--d];else if (i(f, h)) e.insertBefore(o(f, 1), o(s, 0)), f = t[--c], h = n[++l];else {
+          var p = t.indexOf(h);if (p < 0) e.insertBefore(o(h, 1), o(s, 0)), h = n[++l];else {
+            for (var m = p, g = l; m <= c && g <= d && t[m] === n[g];) {
+              m++, g++;
+            }if (1 < m - p) --p === u ? e.removeChild(o(s, -1)) : de(o, e, s, t[p]), l = g, s = t[u = m], h = n[g];else {
+              var b = t[p];t[p] = null, e.insertBefore(o(b, 1), o(s, 0)), h = n[++l];
             }
-          };
+          }
         }
-        // in every other case, use the attribute node as it is
-        // update only the value, set it as node only when/if needed
-        else {
-            var owner = false;
-            var attribute = original.cloneNode(true);
-            return function (newValue) {
-              if (oldValue !== newValue) {
-                oldValue = newValue;
-                if (attribute.value !== newValue) {
-                  if (newValue == null) {
-                    if (owner) {
-                      owner = false;
-                      node.removeAttributeNode(attribute);
-                    }
-                    attribute.value = newValue;
-                  } else {
-                    attribute.value = newValue;
-                    if (!owner) {
-                      owner = true;
-                      node.setAttributeNode(attribute);
-                    }
-                  }
-                }
+      }if (u <= c || l <= d) if (c < u) {
+        var w = n[d + 1],
+            y = null == w ? a : o(w, 0);if (l === d) e.insertBefore(o(n[l], 1), y);else {
+          for (var N = e.ownerDocument.createDocumentFragment(); l <= d;) {
+            N.appendChild(o(n[l++], 1));
+          }e.insertBefore(N, y);
+        }
+      } else null == t[u] && u++, u === c ? e.removeChild(o(t[u], -1)) : de(o, e, t[u], t[c]);return n;
+    },
+        ve = new a();function pe() {}pe.prototype = Object.create(null);var me = function me(e) {
+      return { html: e };
+    },
+        ge = function e(t, n) {
+      return "ELEMENT_NODE" in t ? t : t.constructor === te ? 1 / n < 0 ? n ? t.remove() : t.last : n ? t.insert() : t.first : e(t.render(), n);
+    },
+        be = function be(e, t, n) {
+      for (var r = new pe(), i = e.attributes, o = Q.call(i), a = [], u = o.length, l = 0; l < u; l++) {
+        var c = o[l];if (c.value === b) {
+          var s = c.name;if (!(s in r)) {
+            var f = n.shift().replace(/^(?:|[\S\s]*?\s)(\S+?)=['"]?$/, "$1");r[s] = i[f] || i[f.toLowerCase()], t.push(re("attr", r[s], f));
+          }a.push(c);
+        }
+      }for (var d = a.length, h = 0; h < d; h++) {
+        var v = a[h];/^id$/i.test(v.name) ? e.removeAttribute(v.name) : e.removeAttributeNode(a[h]);
+      }var p = e.nodeName;if (/^script$/i.test(p)) {
+        for (var m = document.createElement(p), g = 0; g < i.length; g++) {
+          m.setAttributeNode(i[g].cloneNode(!0));
+        }m.textContent = e.textContent, e.parentNode.replaceChild(m, e);
+      }
+    },
+        we = function we(e, t) {
+      t(e.placeholder), "text" in e ? Promise.resolve(e.text).then(String).then(t) : "any" in e ? Promise.resolve(e.any).then(t) : "html" in e ? Promise.resolve(e.html).then(me).then(t) : Promise.resolve(A.invoke(e, t)).then(t);
+    },
+        ye = function ye(e) {
+      return null != e && "then" in e;
+    },
+        Ne = function Ne(r, i) {
+      var o = { node: ge, before: r },
+          a = !1,
+          u = void 0;return function e(t) {
+        switch (typeof t === "undefined" ? "undefined" : _typeof(t)) {case "string":case "number":case "boolean":
+            a ? u !== t && (u = t, i[0].textContent = t) : (a = !0, u = t, i = he(r.parentNode, i, [S(r, t)], o));break;case "object":case "undefined":
+            if (null == t) {
+              a = !1, i = he(r.parentNode, i, [], o);break;
+            }default:
+            if (a = !1, m(u = t)) {
+              if (0 === t.length) i.length && (i = he(r.parentNode, i, [], o));else switch (_typeof(t[0])) {case "string":case "number":case "boolean":
+                  e({ html: t });break;case "object":
+                  if (m(t[0]) && (t = t.concat.apply([], t)), ye(t[0])) {
+                    Promise.all(t).then(e);break;
+                  }default:
+                  i = he(r.parentNode, i, t, o);}
+            } else "ELEMENT_NODE" in (n = t) || n instanceof te || n instanceof w ? i = he(r.parentNode, i, 11 === t.nodeType ? Q.call(t.childNodes) : [t], o) : ye(t) ? t.then(e) : "placeholder" in t ? we(t, e) : "text" in t ? e(String(t.text)) : "any" in t ? e(t.any) : "html" in t ? i = he(r.parentNode, i, Q.call(G(r, [].concat(t.html).join("")).childNodes), o) : e("length" in t ? Q.call(t) : A.invoke(t, e));}var n;
+      };
+    },
+        xe = function xe(t, n, e) {
+      var r = l in t,
+          i = void 0;if ("style" === n) return function (e, t, n) {
+        if (n) {
+          var r = t.cloneNode(!0);return r.value = "", e.setAttributeNode(r), ae(r, n);
+        }return ae(e.style, n);
+      }(t, e, r);if (/^on/.test(n)) {
+        var o = n.slice(2);return o === s || o === f ? (je && (je = !1, function () {
+          var i = function i(e, t) {
+            for (var n = new v(t), r = e.length, i = 0; i < r; i++) {
+              var o = e[i];1 === o.nodeType && a(o, n);
+            }
+          },
+              a = function e(t, n) {
+            ve.has(t) && t.dispatchEvent(n);for (var r = t.children || function (e) {
+              for (var t = [], n = e.childNodes, r = n.length, i = 0; i < r; i++) {
+                1 === n[i].nodeType && t.push(n[i]);
+              }return t;
+            }(t), i = r.length, o = 0; o < i; o++) {
+              e(r[o], n);
+            }
+          };try {
+            new MutationObserver(function (e) {
+              for (var t = e.length, n = 0; n < t; n++) {
+                var r = e[n];i(r.removedNodes, f), i(r.addedNodes, s);
               }
-            };
+            }).observe(document, { subtree: !0, childList: !0 });
+          } catch (e) {
+            document.addEventListener("DOMNodeRemoved", function (e) {
+              i([e.target], f);
+            }, !1), document.addEventListener("DOMNodeInserted", function (e) {
+              i([e.target], s);
+            }, !1);
           }
-  };
-
-  // style or textareas don't accept HTML as content
-  // it's pointless to transform or analyze anything
-  // different from text there but it's worth checking
-  // for possible defined intents.
-  var setTextContent = function setTextContent(node) {
-    var oldValue = void 0;
-    var textContent = function textContent(value) {
-      if (oldValue !== value) {
-        oldValue = value;
-        if ((typeof value === 'undefined' ? 'undefined' : _typeof(value)) === 'object' && value) {
-          if (isPromise_ish(value)) {
-            value.then(textContent);
-          } else if ('placeholder' in value) {
-            invokeAtDistance(value, textContent);
-          } else if ('text' in value) {
-            textContent(String(value.text));
-          } else if ('any' in value) {
-            textContent(value.any);
-          } else if ('html' in value) {
-            textContent([].concat(value.html).join(''));
-          } else if ('length' in value) {
-            textContent(slice.call(value).join(''));
-          } else {
-            textContent(Intent.invoke(value, textContent));
-          }
-        } else {
-          node.textContent = value == null ? '' : value;
+        }()), ve.add(t)) : n.toLowerCase() in t && (o = o.toLowerCase()), function (e) {
+          i !== e && (i && t.removeEventListener(o, i, !1), (i = e) && t.addEventListener(o, e, !1));
+        };
+      }if ("data" === n || !r && n in t) return function (e) {
+        i !== e && (i = e, t[n] !== e && null == (t[n] = e) && t.removeAttribute(n));
+      };if (n in A.attributes) return function (e) {
+        i = A.attributes[n](t, e), t.setAttribute(n, null == i ? "" : i);
+      };var a = !1,
+          u = e.cloneNode(!0);return function (e) {
+        i !== e && (i = e, u.value !== e && (null == e ? (a && (a = !1, t.removeAttributeNode(u)), u.value = e) : (u.value = e, a || (a = !0, t.setAttributeNode(u)))));
+      };
+    },
+        Ee = function Ee(n) {
+      var r = void 0;return function e(t) {
+        r !== t && ("object" == _typeof(r = t) && t ? ye(t) ? t.then(e) : "placeholder" in t ? we(t, e) : e("text" in t ? String(t.text) : "any" in t ? t.any : "html" in t ? [].concat(t.html).join("") : "length" in t ? Q.call(t).join("") : A.invoke(t, e)) : n.textContent = null == t ? "" : t);
+      };
+    },
+        Ce = { create: function create(e, t) {
+        for (var n = [], r = t.length, i = 0; i < r; i++) {
+          var o = t[i],
+              a = ie(e, o.path);switch (o.type) {case "any":
+              n.push(Ne(a, []));break;case "attr":
+              n.push(xe(a, o.name, o.node));break;case "text":
+              n.push(Ee(a)), a.textContent = "";}
+        }return n;
+      }, find: function e(t, n, r) {
+        for (var i = t.childNodes, o = i.length, a = 0; a < o; a++) {
+          var u = i[a];switch (u.nodeType) {case 1:
+              be(u, n, r), e(u, n, r);break;case 8:
+              u.textContent === b && (r.shift(), n.push(d.test(t.nodeName) ? re("text", t) : re("any", u)));break;case 3:
+              d.test(t.nodeName) && g.call(u.textContent) === h && (r.shift(), n.push(re("text", t)));}
         }
+      } },
+        je = !0;var Ae = new p(),
+        ke = function () {
+      try {
+        var e = new p(),
+            t = Object.freeze([]);if (e.set(t, !0), !e.get(t)) throw t;return e;
+      } catch (t) {
+        return new i();
       }
-    };
-    return textContent;
-  };
-
-  var Updates = { create: create$1, find: find };
-
-  // hyper.Components might need connected/disconnected notifications
-  // used by components and their onconnect/ondisconnect callbacks.
-  // When one of these callbacks is encountered,
-  // the document starts being observed.
-  var notObserving = true;
-  function observe() {
-
-    // when hyper.Component related DOM nodes
-    // are appended or removed from the live tree
-    // these might listen to connected/disconnected events
-    // This utility is in charge of finding all components
-    // involved in the DOM update/change and dispatch
-    // related information to them
-    var dispatchAll = function dispatchAll(nodes, type) {
-      var event = new Event(type);
-      var length = nodes.length;
-      for (var i = 0; i < length; i++) {
-        var node = nodes[i];
-        if (node.nodeType === ELEMENT_NODE) {
-          dispatchTarget(node, event);
-        }
+    }();function Te(e) {
+      var t = Ae.get(this);return t && t.template === U(e) ? Oe.apply(t.updates, arguments) : function (e) {
+        e = U(e);var t = ke.get(e) || function (e) {
+          var t = [],
+              n = e.join(h).replace(De, Pe),
+              r = G(this, n);Ce.find(r, t, e.slice());var i = { fragment: r, paths: t };return ke.set(e, i), i;
+        }.call(this, e),
+            n = K(this.ownerDocument, t.fragment),
+            r = Ce.create(n, t.paths);Ae.set(this, { template: e, updates: r }), Oe.apply(r, arguments), this.textContent = "", this.appendChild(n);
+      }.apply(this, arguments), this;
+    }function Oe() {
+      for (var e = arguments.length, t = 1; t < e; t++) {
+        this[t - 1](arguments[t]);
       }
-    };
-
-    // the way it's done is via the components weak set
-    // and recursively looking for nested components too
-    var dispatchTarget = function dispatchTarget(node, event) {
-      if (components.has(node)) {
-        node.dispatchEvent(event);
-      }
-
-      /* istanbul ignore next */
-      var children = node.children || getChildren(node);
-      var length = children.length;
-      for (var i = 0; i < length; i++) {
-        dispatchTarget(children[i], event);
-      }
-    };
-
-    // The MutationObserver is the best way to implement that
-    // but there is a fallback to deprecated DOMNodeInserted/Removed
-    // so that even older browsers/engines can help components life-cycle
-    try {
-      new MutationObserver(function (records) {
-        var length = records.length;
-        for (var i = 0; i < length; i++) {
-          var record = records[i];
-          dispatchAll(record.removedNodes, DISCONNECTED);
-          dispatchAll(record.addedNodes, CONNECTED);
-        }
-      }).observe(document, { subtree: true, childList: true });
-    } catch (o_O) {
-      document.addEventListener('DOMNodeRemoved', function (event) {
-        dispatchAll([event.target], DISCONNECTED);
-      }, false);
-      document.addEventListener('DOMNodeInserted', function (event) {
-        dispatchAll([event.target], CONNECTED);
-      }, false);
-    }
-  }
-
-  // a weak collection of contexts that
-  // are already known to hyperHTML
-  var bewitched = new WeakMap();
-
-  // all unique template literals
-  var templates = TemplateMap();
-
-  // better known as hyper.bind(node), the render is
-  // the main tag function in charge of fully upgrading
-  // or simply updating, contexts used as hyperHTML targets.
-  // The `this` context is either a regular DOM node or a fragment.
-  function render(template) {
-    var wicked = bewitched.get(this);
-    if (wicked && wicked.template === unique(template)) {
-      update$1.apply(wicked.updates, arguments);
-    } else {
-      upgrade.apply(this, arguments);
-    }
-    return this;
-  }
-
-  // an upgrade is in charge of collecting template info,
-  // parse it once, if unknown, to map all interpolations
-  // as single DOM callbacks, relate such template
-  // to the current context, and render it after cleaning the context up
-  function upgrade(template) {
-    template = unique(template);
-    var info = templates.get(template) || createTemplate.call(this, template);
-    var fragment = importNode(this.ownerDocument, info.fragment);
-    var updates = Updates.create(fragment, info.paths);
-    bewitched.set(this, { template: template, updates: updates });
-    update$1.apply(updates, arguments);
-    this.textContent = '';
-    this.appendChild(fragment);
-  }
-
-  // an update simply loops over all mapped DOM operations
-  function update$1() {
-    var length = arguments.length;
-    for (var i = 1; i < length; i++) {
-      this[i - 1](arguments[i]);
-    }
-  }
-
-  // a template can be used to create a document fragment
-  // aware of all interpolations and with a list
-  // of paths used to find once those nodes that need updates,
-  // no matter if these are attributes, text nodes, or regular one
-  function createTemplate(template) {
-    var paths = [];
-    var html = template.join(UIDC).replace(SC_RE, SC_PLACE);
-    var fragment = createFragment(this, html);
-    Updates.find(fragment, paths, template.slice());
-    var info = { fragment: fragment, paths: paths };
-    templates.set(template, info);
-    return info;
-  }
-
-  // some node could be special though, like a custom element
-  // with a self closing tag, which should work through these changes.
-  var SC_RE = selfClosing;
-  var SC_PLACE = function SC_PLACE($0, $1, $2) {
-    return VOID_ELEMENTS.test($1) ? $0 : '<' + $1 + $2 + '></' + $1 + '>';
-  };
-
-  // all wires used per each context
-  var wires = new WeakMap();
-
-  // A wire is a callback used as tag function
-  // to lazily relate a generic object to a template literal.
-  // hyper.wire(user)`<div id=user>${user.name}</div>`; => the div#user
-  // This provides the ability to have a unique DOM structure
-  // related to a unique JS object through a reusable template literal.
-  // A wire can specify a type, as svg or html, and also an id
-  // via html:id or :id convention. Such :id allows same JS objects
-  // to be associated to different DOM structures accordingly with
-  // the used template literal without losing previously rendered parts.
-  var wire = function wire(obj, type) {
-    return obj == null ? content(type || 'html') : weakly(obj, type || 'html');
-  };
-
-  // A wire content is a virtual reference to one or more nodes.
-  // It's represented by either a DOM node, or an Array.
-  // In both cases, the wire content role is to simply update
-  // all nodes through the list of related callbacks.
-  // In few words, a wire content is like an invisible parent node
-  // in charge of updating its content like a bound element would do.
-  var content = function content(type) {
-    var wire = void 0,
-        container = void 0,
-        content = void 0,
-        template = void 0,
-        updates = void 0;
-    return function (statics) {
-      statics = unique(statics);
-      var setup = template !== statics;
-      if (setup) {
-        template = statics;
-        content = fragment(document);
-        container = type === 'svg' ? document.createElementNS(SVG_NAMESPACE, 'svg') : content;
-        updates = render.bind(container);
-      }
-      updates.apply(null, arguments);
-      if (setup) {
-        if (type === 'svg') {
-          append(content, slice.call(container.childNodes));
-        }
-        wire = wireContent(content);
-      }
-      return wire;
-    };
-  };
-
-  // wires are weakly created through objects.
-  // Each object can have multiple wires associated
-  // and this is thanks to the type + :id feature.
-  var weakly = function weakly(obj, type) {
-    var i = type.indexOf(':');
-    var wire = wires.get(obj);
-    var id = type;
-    if (-1 < i) {
-      id = type.slice(i + 1);
-      type = type.slice(0, i) || 'html';
-    }
-    if (!wire) wires.set(obj, wire = {});
-    return wire[id] || (wire[id] = content(type));
-  };
-
-  // a document fragment loses its nodes as soon
-  // as it's appended into another node.
-  // This would easily lose wired content
-  // so that on a second render call, the parent
-  // node wouldn't know which node was there
-  // associated to the interpolation.
-  // To prevent hyperHTML to forget about wired nodes,
-  // these are either returned as Array or, if there's ony one entry,
-  // as single referenced node that won't disappear from the fragment.
-  // The initial fragment, at this point, would be used as unique reference.
-  var wireContent = function wireContent(node) {
-    var childNodes = node.childNodes;
-    var length = childNodes.length;
-    var wireNodes = [];
-    for (var i = 0; i < length; i++) {
-      var child = childNodes[i];
-      if (child.nodeType === ELEMENT_NODE || trim.call(child.textContent).length !== 0) {
-        wireNodes.push(child);
-      }
-    }
-    return wireNodes.length === 1 ? wireNodes[0] : new Wire(wireNodes);
-  };
-
-  /*! (c) Andrea Giammarchi (ISC) */
-
-  // all functions are self bound to the right context
-  // you can do the following
-  // const {bind, wire} = hyperHTML;
-  // and use them right away: bind(node)`hello!`;
-  var bind = function bind(context) {
-    return render.bind(context);
-  };
-  var define = Intent.define;
-
-  hyper.Component = Component;
-  hyper.bind = bind;
-  hyper.define = define;
-  hyper.diff = domdiff;
-  hyper.hyper = hyper;
-  hyper.wire = wire;
-
-  // the wire content is the lazy defined
-  // html or svg property of each hyper.Component
-  setup(content);
-
-  // by default, hyperHTML is a smart function
-  // that "magically" understands what's the best
-  // thing to do with passed arguments
-  function hyper(HTML) {
-    return arguments.length < 2 ? HTML == null ? content('html') : typeof HTML === 'string' ? hyper.wire(null, HTML) : 'raw' in HTML ? content('html')(HTML) : 'nodeType' in HTML ? hyper.bind(HTML) : weakly(HTML, 'html') : ('raw' in HTML ? content('html') : hyper.wire).apply(null, arguments);
-  }
+    }var Se,
+        Le,
+        Me,
+        $e,
+        De = R,
+        Pe = function Pe(e, t, n) {
+      return r.test(t) ? e : "<" + t + n + "></" + t + ">";
+    },
+        Be = new p(),
+        Re = function Re(n) {
+      var r = void 0,
+          i = void 0,
+          o = void 0,
+          a = void 0,
+          u = void 0;return function (e) {
+        e = U(e);var t = a !== e;return t && (a = e, o = O(document), i = "svg" === n ? document.createElementNS(c, "svg") : o, u = Te.bind(i)), u.apply(null, arguments), t && ("svg" === n && I(o, Q.call(i.childNodes)), r = He(o)), r;
+      };
+    },
+        _e = function _e(e, t) {
+      var n = t.indexOf(":"),
+          r = Be.get(e),
+          i = t;return -1 < n && (i = t.slice(n + 1), t = t.slice(0, n) || "html"), r || Be.set(e, r = {}), r[i] || (r[i] = Re(t));
+    },
+        He = function He(e) {
+      for (var t = e.childNodes, n = t.length, r = [], i = 0; i < n; i++) {
+        var o = t[i];1 !== o.nodeType && 0 === g.call(o.textContent).length || r.push(o);
+      }return 1 === r.length ? r[0] : new te(r);
+    },
+        ze = A.define;function Fe(e) {
+      return arguments.length < 2 ? null == e ? Re("html") : "string" == typeof e ? Fe.wire(null, e) : "raw" in e ? Re("html")(e) : "nodeType" in e ? Fe.bind(e) : _e(e, "html") : ("raw" in e ? Re("html") : Fe.wire).apply(null, arguments);
+    }return Fe.Component = w, Fe.bind = function (e) {
+      return Te.bind(e);
+    }, Fe.define = ze, Fe.diff = he, (Fe.hyper = Fe).wire = function (e, t) {
+      return null == e ? Re(t || "html") : _e(e, t || "html");
+    }, Se = Re, Le = new p(), Me = Object.create, $e = function $e(e, t) {
+      var n = { w: null, p: null };return t.set(e, n), n;
+    }, Object.defineProperties(w, { for: { configurable: !0, value: function value(e, t) {
+          return function (e, t, n, r) {
+            var i,
+                o,
+                a,
+                u = t.get(e) || $e(e, t);switch (typeof r === "undefined" ? "undefined" : _typeof(r)) {case "object":case "function":
+                var l = u.w || (u.w = new p());return l.get(r) || (i = l, o = r, a = new e(n), i.set(o, a), a);default:
+                var c = u.p || (u.p = Me(null));return c[r] || (c[r] = new e(n));}
+          }(this, Le.get(e) || (n = e, r = new i(), Le.set(n, r), r), e, null == t ? "default" : t);var n, r;
+        } } }), Object.defineProperties(w.prototype, { handleEvent: { value: function value(e) {
+          var t = e.currentTarget;this["getAttribute" in t && t.getAttribute("data-call") || "on" + e.type](e);
+        } }, html: u("html", Se), svg: u("svg", Se), state: u("state", function () {
+        return this.defaultState;
+      }), defaultState: { get: function get$$1() {
+          return {};
+        } }, dispatch: { value: function value(e, t) {
+          var n = this._wire$;if (n) {
+            var r = new CustomEvent(e, { bubbles: !0, cancelable: !0, detail: t });return r.component = this, (n.dispatchEvent ? n : n.childNodes[0]).dispatchEvent(r);
+          }return !1;
+        } }, setState: { value: function value(e, t) {
+          var n = this.state,
+              r = "function" == typeof e ? e.call(this, n) : e;for (var i in r) {
+            n[i] = r[i];
+          }return !1 !== t && this.render(), this;
+        } } }), Fe;
+  }(window);
+  var Component = hyperHTML.Component,
+      bind = hyperHTML.bind,
+      define = hyperHTML.define,
+      hyper = hyperHTML.hyper,
+      wire = hyperHTML.wire;
 
   var _fixBabelExtend = function (O) {
     var gPO = O.getPrototypeOf || function (o) {
@@ -1569,11 +641,18 @@ var HyperHTMLElement = (function (exports) {
             return $1.toUpperCase();
           }), {
             configurable: true,
+            // it's impossible to understand if this property
+            // should be returned as boolean or not
+            // but you can always define
+            // get propName() { return !!this.getAttribute(name); }
+            // overwriting the default behavior
             get: function get$$1() {
               return this.getAttribute(name);
             },
             set: function set$$1(value) {
-              this.setAttribute(name, value);
+              if (value === false || value == null) this.removeAttribute(name, value);else {
+                this.setAttribute(name, value);
+              }
             }
           });
         });

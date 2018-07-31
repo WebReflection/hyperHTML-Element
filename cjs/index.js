@@ -39,8 +39,21 @@ class HyperHTMLElement extends HTMLElement {
         name.replace(/-([a-z])/g, ($0, $1) => $1.toUpperCase()),
         {
           configurable: true,
-          get() { return this.getAttribute(name); },
-          set(value) { this.setAttribute(name, value); }
+          // it's impossible to understand if this property
+          // should be returned as boolean or not
+          // but you can always define
+          // get propName() { return !!this.getAttribute(name); }
+          // overwriting the default behavior
+          get() {
+            return this.getAttribute(name);
+          },
+          set(value) {
+            if (value === false || value == null)
+              this.removeAttribute(name, value);
+            else {
+              this.setAttribute(name, value);
+            }
+          }
         }
       );
     });

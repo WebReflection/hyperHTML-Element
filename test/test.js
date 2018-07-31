@@ -9,7 +9,7 @@ class MySelf extends HyperHTMLElement {
 MySelf.define('my-self');
 
 class MyInput extends HyperHTMLElement {
-  static get observedAttributes() { return ['value']; }
+  static get observedAttributes() { return ['value', 'boolean']; }
   attributeChangedCallback() { this.render(); }
   oninput(e) {
     this.value = e.target.value;
