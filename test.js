@@ -110,6 +110,9 @@ setTimeout(function () {
   tressa.assert(el.value === '123' && el.anotherValue === '456', 'attributes set as expected');
   tressa.assert(el.outerHTML === '<my-input value="123" another-value="456" boolean />', 'input with expected output');
 
+  el.setAttribute('boolean', '');
+  tressa.assert(el.boolean === true, 'empty attributes are returned as true');
+
   el.boolean = false;
   tressa.assert(el.outerHTML === '<my-input value="123" another-value="456" />', 'input without boolean');
 

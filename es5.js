@@ -647,7 +647,8 @@ var HyperHTMLElement = (function (exports) {
             // get propName() { return !!this.getAttribute(name); }
             // overwriting the default behavior
             get: function get$$1() {
-              return this.getAttribute(name);
+              var value = this.getAttribute(name);
+              return value === '' ? true : value;
             },
             set: function set$$1(value) {
               if (value === false || value == null) this.removeAttribute(name, value);else {

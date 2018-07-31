@@ -44,7 +44,8 @@ class HyperHTMLElement extends HTMLElement {
           // get propName() { return !!this.getAttribute(name); }
           // overwriting the default behavior
           get() {
-            return this.getAttribute(name);
+            const value = this.getAttribute(name);
+            return value === '' ? true : value;
           },
           set(value) {
             if (value === false || value == null)
