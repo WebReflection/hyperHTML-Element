@@ -1,9 +1,11 @@
 class MySelf extends HyperHTMLElement {
+  static get booleanAttributes() { return ['active']; }
   static get observedAttributes() { return ['name', 'age']; }
   created() { this.render(); }
   attributeChangedCallback() { this.render(); }
   render() { return this.html`
-    Hi, my name is ${this.name} and I am ${this.age}`;
+    Hi, my name is ${this.name},
+    I am ${this.age} ${this.active ? ' and still active' : ''}`;
   }
 }
 MySelf.define('my-self');
@@ -31,3 +33,10 @@ class MyLink extends HyperHTMLElement {
   }
 }
 MyLink.define('my-link', {extends: 'a'});
+
+
+setTimeout(function () {
+  HyperHTMLElement.bind(document.body.appendChild(document.createElement('div')))
+  `<my-self name="Rando" age="17" active=${Math.random() < .5}></my-self>`;
+}, 1000);
+
