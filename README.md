@@ -32,6 +32,10 @@ class MyElement extends HyperHTMLElement {
   // observed attributes are automatically defined as accessors
   static get observedAttributes() { return ['key']; }
 
+  // boolean attributes are automatically defined as accessors
+  // and will set or remove the passed value
+  static get booleanAttributes() { return ['active']; }
+
   // invoked once the component has been fully upgraded
   // suitable to perform any sort of setup
   // granted to be invoked right before either
