@@ -16,6 +16,12 @@ let HyperHTMLElement = require('./cjs').default;
 
 class MyElement extends HyperHTMLElement {
 
+  static get booleanAttributes() {
+    return ['special'];
+  }
+
+  get special() { return false; }
+
   static get observedAttributes() {
     return ['key'];
   }
@@ -58,6 +64,7 @@ tressa.assert(customElements.get('my-el') === MyElement, '<my-el> defined in the
 tressa.assert(new MyLink instanceof HyperHTMLElement, '<my-link> is an instance');
 
 let el = new MyElement();
+tressa.assert(el.special === false, 'nothing special about this el');
 document.body.appendChild(el).key = 'value';
 setTimeout(function () { document.body.appendChild(document.createElement('p')); }, 50);
 
@@ -82,8 +89,12 @@ setTimeout(function () {
 
   class MyInput extends HyperHTMLElement {
 
+    static get booleanAttributes() {
+      return ['boolean'];
+    }
+
     static get observedAttributes() {
-      return ['value', 'another-value', 'boolean'];
+      return ['value', 'another-value'];
     }
 
     get value() {
@@ -110,12 +121,14 @@ setTimeout(function () {
   tressa.assert(el.value === '123' && el.anotherValue === '456', 'attributes set as expected');
   tressa.assert(el.outerHTML === '<my-input value="123" another-value="456" boolean />', 'input with expected output');
 
-  el.setAttribute('boolean', '');
+  el.boolean = 'absolutely';
   tressa.assert(el.boolean === true, 'empty attributes are returned as true');
 
   el.boolean = false;
   tressa.assert(el.outerHTML === '<my-input value="123" another-value="456" />', 'input without boolean');
 
+  el.anotherValue = null;
+  tressa.assert(el.outerHTML === '<my-input value="123" />', 'input without other value');
 
   // for code coverage sake
   class MyEmptiness extends HyperHTMLElement {}
@@ -206,12 +219,16 @@ setTimeout(function () {
 
   // handleEvent
   class MyHandler extends HyperHTMLElement {
+    static get booleanAttributes() {
+      return ['special-case'];
+    }
     handleEvent() { this.value = 123; return this; }
   }
 
   MyHandler.define('my-handler');
 
   el = new MyHandler();
+  el.specialCase = true;
   tressa.assert(
     el.handleEvent() === el && el.value === 123,
     'original handleEvent preserved and bound'

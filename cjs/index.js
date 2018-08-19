@@ -4,9 +4,9 @@
 const {Component, bind, define, hyper, wire} = require('hyperhtml/cjs');
 
 // utils to deal with custom elements builtin extends
+const ATTRIBUTE_CHANGED_CALLBACK = 'attributeChangedCallback';
 const O = Object;
 const classes = [];
-const defineProperties = O.defineProperties;
 const defineProperty = O.defineProperty;
 const getOwnPropertyDescriptor = O.getOwnPropertyDescriptor;
 const getOwnPropertyNames = O.getOwnPropertyNames;
@@ -26,7 +26,40 @@ class HyperHTMLElement extends HTMLElement {
     const Class = this;
     const proto = Class.prototype;
 
-    // if observedAttributes contains attributes to observe
+    const onChanged = proto[ATTRIBUTE_CHANGED_CALLBACK];
+    const hasChange = !!onChanged;
+
+    // Class.booleanAttributes
+    // -----------------------------------------------
+    // attributes defined as boolean will have
+    // an either available or not available attribute
+    // regardless of the value.
+    // All falsy values mean attribute removed
+    // while truthy values will be set as is.
+    (Class.booleanAttributes || []).forEach(name => {
+      if (!(name in proto)) defineProperty(
+        proto,
+        name.replace(/-([a-z])/g, ($0, $1) => $1.toUpperCase()),
+        {
+          configurable: true,
+          get() {
+            return this.hasAttribute(name);
+          },
+          set(value) {
+            const prev = this.getAttribute(name);
+            if (!value || value === 'false')
+              this.removeAttribute(name);
+            else
+              this.setAttribute(name, value);
+            if (hasChange && prev !== value)
+              this[ATTRIBUTE_CHANGED_CALLBACK](name, prev, value);
+          }
+        }
+      );
+    });
+
+    // Class.observedAttributes
+    // -------------------------------------------------------
     // HyperHTMLElement will directly reflect get/setAttribute
     // operation once these attributes are used, example:
     // el.observed = 123;
@@ -34,35 +67,29 @@ class HyperHTMLElement extends HTMLElement {
     // el.setAttribute('observed', 123);
     // triggering also the attributeChangedCallback
     (Class.observedAttributes || []).forEach(name => {
+      // it is possible to redefine the behavior at any time
+      // simply overwriting get prop() and set prop(value)
       if (!(name in proto)) defineProperty(
         proto,
         name.replace(/-([a-z])/g, ($0, $1) => $1.toUpperCase()),
         {
           configurable: true,
-          // it's impossible to understand if this property
-          // should be returned as boolean or not
-          // but you can always define
-          // get propName() { return !!this.getAttribute(name); }
-          // overwriting the default behavior
           get() {
-            const value = this.getAttribute(name);
-            return value === '' ? true : value;
+            return this.getAttribute(name);
           },
           set(value) {
-            if (value === false || value == null)
-              this.removeAttribute(name, value);
-            else {
+            if (value == null)
+              this.removeAttribute(name);
+            else
               this.setAttribute(name, value);
-            }
           }
         }
       );
     });
 
-    const onChanged = proto.attributeChangedCallback;
-    const hasChange = !!onChanged;
-
-    // created() {} is an initializer method that grants
+    // created() {}
+    // ---------------------------------
+    // an initializer method that grants
     // the node is fully known to the browser.
     // It is ensured to run either after DOMContentLoaded,
     // or once there is a next sibling (stream-friendly) so that
@@ -85,7 +112,7 @@ class HyperHTMLElement extends HTMLElement {
       //    via Object.defineProperty to preserve its non-enumerable nature.
       defineProperty(
         proto,
-        'attributeChangedCallback',
+        ATTRIBUTE_CHANGED_CALLBACK,
         {
           configurable: true,
           value: function aCC(name, prev, curr) {
@@ -131,7 +158,7 @@ class HyperHTMLElement extends HTMLElement {
       //    via Object.defineProperty to preserve its non-enumerable nature.
       defineProperty(
         proto,
-        'attributeChangedCallback',
+        ATTRIBUTE_CHANGED_CALLBACK,
         {
           configurable: true,
           value(name, prev, curr) {

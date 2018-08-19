@@ -518,6 +518,7 @@ var HyperHTMLElement = (function (exports) {
   }(Object);
 
   // utils to deal with custom elements builtin extends
+  var ATTRIBUTE_CHANGED_CALLBACK = 'attributeChangedCallback';
   var O = Object;
   var classes = [];
   var defineProperty$1 = O.defineProperty;
@@ -629,7 +630,34 @@ var HyperHTMLElement = (function (exports) {
         var Class = this;
         var proto = Class.prototype;
 
-        // if observedAttributes contains attributes to observe
+        var onChanged = proto[ATTRIBUTE_CHANGED_CALLBACK];
+        var hasChange = !!onChanged;
+
+        // Class.booleanAttributes
+        // -----------------------------------------------
+        // attributes defined as boolean will have
+        // an either available or not available attribute
+        // regardless of the value.
+        // All falsy values mean attribute removed
+        // while truthy values will be set as is.
+        (Class.booleanAttributes || []).forEach(function (name) {
+          if (!(name in proto)) defineProperty$1(proto, name.replace(/-([a-z])/g, function ($0, $1) {
+            return $1.toUpperCase();
+          }), {
+            configurable: true,
+            get: function get$$1() {
+              return this.hasAttribute(name);
+            },
+            set: function set$$1(value) {
+              var prev = this.getAttribute(name);
+              if (!value || value === 'false') this.removeAttribute(name);else this.setAttribute(name, value);
+              if (hasChange && prev !== value) this[ATTRIBUTE_CHANGED_CALLBACK](name, prev, value);
+            }
+          });
+        });
+
+        // Class.observedAttributes
+        // -------------------------------------------------------
         // HyperHTMLElement will directly reflect get/setAttribute
         // operation once these attributes are used, example:
         // el.observed = 123;
@@ -637,31 +665,24 @@ var HyperHTMLElement = (function (exports) {
         // el.setAttribute('observed', 123);
         // triggering also the attributeChangedCallback
         (Class.observedAttributes || []).forEach(function (name) {
+          // it is possible to redefine the behavior at any time
+          // simply overwriting get prop() and set prop(value)
           if (!(name in proto)) defineProperty$1(proto, name.replace(/-([a-z])/g, function ($0, $1) {
             return $1.toUpperCase();
           }), {
             configurable: true,
-            // it's impossible to understand if this property
-            // should be returned as boolean or not
-            // but you can always define
-            // get propName() { return !!this.getAttribute(name); }
-            // overwriting the default behavior
             get: function get$$1() {
-              var value = this.getAttribute(name);
-              return value === '' ? true : value;
+              return this.getAttribute(name);
             },
             set: function set$$1(value) {
-              if (value === false || value == null) this.removeAttribute(name, value);else {
-                this.setAttribute(name, value);
-              }
+              if (value == null) this.removeAttribute(name);else this.setAttribute(name, value);
             }
           });
         });
 
-        var onChanged = proto.attributeChangedCallback;
-        var hasChange = !!onChanged;
-
-        // created() {} is an initializer method that grants
+        // created() {}
+        // ---------------------------------
+        // an initializer method that grants
         // the node is fully known to the browser.
         // It is ensured to run either after DOMContentLoaded,
         // or once there is a next sibling (stream-friendly) so that
@@ -678,7 +699,7 @@ var HyperHTMLElement = (function (exports) {
           // ⚠️ if you need to overwrite/change attributeChangedCallback method
           //    at runtime after class definition, be sure you do so
           //    via Object.defineProperty to preserve its non-enumerable nature.
-          defineProperty$1(proto, 'attributeChangedCallback', {
+          defineProperty$1(proto, ATTRIBUTE_CHANGED_CALLBACK, {
             configurable: true,
             value: function aCC(name, prev, curr) {
               if (this._init$) {
@@ -714,7 +735,7 @@ var HyperHTMLElement = (function (exports) {
           // ⚠️ if you need to overwrite/change attributeChangedCallback method
           //    at runtime after class definition, be sure you do so
           //    via Object.defineProperty to preserve its non-enumerable nature.
-          defineProperty$1(proto, 'attributeChangedCallback', {
+          defineProperty$1(proto, ATTRIBUTE_CHANGED_CALLBACK, {
             configurable: true,
             value: function value(name, prev, curr) {
               // ensure setting same value twice

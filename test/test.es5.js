@@ -2,9 +2,10 @@
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
-var _templateObject = _taggedTemplateLiteral(['\n    Hi, my name is ', ' and I am ', ''], ['\n    Hi, my name is ', ' and I am ', '']),
+var _templateObject = _taggedTemplateLiteral(['\n    Hi, my name is ', ',\n    I am ', ' ', ''], ['\n    Hi, my name is ', ',\n    I am ', ' ', '']),
     _templateObject2 = _taggedTemplateLiteral(['\n    <input value="', '" oninput="', '">'], ['\n    <input value="', '" oninput="', '">']),
-    _templateObject3 = _taggedTemplateLiteral(['it worked'], ['it worked']);
+    _templateObject3 = _taggedTemplateLiteral(['it worked'], ['it worked']),
+    _templateObject4 = _taggedTemplateLiteral(['<my-self name="Rando" age="17" active=', '></my-self>'], ['<my-self name="Rando" age="17" active=', '></my-self>']);
 
 function _taggedTemplateLiteral(strings, raw) { return Object.freeze(Object.defineProperties(strings, { raw: { value: Object.freeze(raw) } })); }
 
@@ -36,9 +37,14 @@ var MySelf = function (_HyperHTMLElement) {
   }, {
     key: 'render',
     value: function render() {
-      return this.html(_templateObject, this.name, this.age);
+      return this.html(_templateObject, this.name, this.age, this.active ? ' and still active' : '');
     }
   }], [{
+    key: 'booleanAttributes',
+    get: function get() {
+      return ['active'];
+    }
+  }, {
     key: 'observedAttributes',
     get: function get() {
       return ['name', 'age'];
@@ -113,4 +119,8 @@ var MyLink = function (_HyperHTMLElement3) {
 }(HyperHTMLElement);
 
 MyLink.define('my-link', { extends: 'a' });
+
+setTimeout(function () {
+  HyperHTMLElement.bind(document.body.appendChild(document.createElement('div')))(_templateObject4, Math.random() < .5);
+}, 1000);
 
