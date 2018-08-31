@@ -118,6 +118,19 @@ var HyperHTMLElement = (function (exports) {
           }
         );
 
+        // allow arbitrary invoke of `el.created()`
+        // handy to monkey patch old Firefox or others
+        defineProperty(
+          proto,
+          'created',
+          {
+            value() {
+              if (this._init$)
+                checkReady.call(this, created);
+            }
+          }
+        );
+
         // ⚠️ if you need to overwrite/change attributeChangedCallback method
         //    at runtime after class definition, be sure you do so
         //    via Object.defineProperty to preserve its non-enumerable nature.

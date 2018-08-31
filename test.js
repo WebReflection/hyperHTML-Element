@@ -64,6 +64,7 @@ tressa.assert(customElements.get('my-el') === MyElement, '<my-el> defined in the
 tressa.assert(new MyLink instanceof HyperHTMLElement, '<my-link> is an instance');
 
 let el = new MyElement();
+el.created();
 tressa.assert(el.special === false, 'nothing special about this el');
 document.body.appendChild(el).key = 'value';
 setTimeout(function () { document.body.appendChild(document.createElement('p')); }, 50);
@@ -76,6 +77,7 @@ setTimeout(function () {
   tressa.assert(el.method.join('connectedCallback,attributeChangedCallback,created'), 'with the right order');
   tressa.assert(el.key === 'value' && el.getAttribute('key') === el.key, 'attribute set');
 
+  el.created();
   el.key = 'value';
   tressa.assert(el.method.join('created,attributeChangedCallback,connectedCallback'), 'setting same attribute value does not trigger');
   tressa.assert(el.render() === el.render(), 'html is cached once');
