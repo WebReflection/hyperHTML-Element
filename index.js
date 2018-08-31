@@ -37,9 +37,11 @@ var HyperHTMLElement = (function (exports) {
       // attributes defined as boolean will have
       // an either available or not available attribute
       // regardless of the value.
-      // All falsy values mean attribute removed
+      // All falsy values, or "false", mean attribute removed
       // while truthy values will be set as is.
-      (Class.booleanAttributes || []).forEach(name => {
+      // Boolean attributes are also automatically observed.
+      const booleanAttributes = Class.booleanAttributes || [];
+      booleanAttributes.forEach(name => {
         if (!(name in proto)) defineProperty(
           proto,
           name.replace(/-([a-z])/g, ($0, $1) => $1.toUpperCase()),
@@ -49,13 +51,10 @@ var HyperHTMLElement = (function (exports) {
               return this.hasAttribute(name);
             },
             set(value) {
-              const prev = this.getAttribute(name);
               if (!value || value === 'false')
                 this.removeAttribute(name);
               else
                 this.setAttribute(name, value);
-              if (hasChange && prev !== value)
-                this[ATTRIBUTE_CHANGED_CALLBACK](name, prev, value);
             }
           }
         );
@@ -69,7 +68,8 @@ var HyperHTMLElement = (function (exports) {
       // will automatically do
       // el.setAttribute('observed', 123);
       // triggering also the attributeChangedCallback
-      (Class.observedAttributes || []).forEach(name => {
+      const observedAttributes = Class.observedAttributes || [];
+      observedAttributes.forEach(name => {
         // it is possible to redefine the behavior at any time
         // simply overwriting get prop() and set prop(value)
         if (!(name in proto)) defineProperty(
@@ -89,6 +89,14 @@ var HyperHTMLElement = (function (exports) {
           }
         );
       });
+
+      // if these are defined, overwrite the observedAttributes getter
+      // to include also booleanAttributes
+      const attributes = booleanAttributes.concat(observedAttributes);
+      if (attributes.length)
+        defineProperty(Class, 'observedAttributes', {
+          get() { return attributes; }
+        });
 
       // created() {}
       // ---------------------------------

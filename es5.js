@@ -638,9 +638,11 @@ var HyperHTMLElement = (function (exports) {
         // attributes defined as boolean will have
         // an either available or not available attribute
         // regardless of the value.
-        // All falsy values mean attribute removed
+        // All falsy values, or "false", mean attribute removed
         // while truthy values will be set as is.
-        (Class.booleanAttributes || []).forEach(function (name) {
+        // Boolean attributes are also automatically observed.
+        var booleanAttributes = Class.booleanAttributes || [];
+        booleanAttributes.forEach(function (name) {
           if (!(name in proto)) defineProperty$1(proto, name.replace(/-([a-z])/g, function ($0, $1) {
             return $1.toUpperCase();
           }), {
@@ -649,9 +651,7 @@ var HyperHTMLElement = (function (exports) {
               return this.hasAttribute(name);
             },
             set: function set$$1(value) {
-              var prev = this.getAttribute(name);
               if (!value || value === 'false') this.removeAttribute(name);else this.setAttribute(name, value);
-              if (hasChange && prev !== value) this[ATTRIBUTE_CHANGED_CALLBACK](name, prev, value);
             }
           });
         });
@@ -664,7 +664,8 @@ var HyperHTMLElement = (function (exports) {
         // will automatically do
         // el.setAttribute('observed', 123);
         // triggering also the attributeChangedCallback
-        (Class.observedAttributes || []).forEach(function (name) {
+        var observedAttributes = Class.observedAttributes || [];
+        observedAttributes.forEach(function (name) {
           // it is possible to redefine the behavior at any time
           // simply overwriting get prop() and set prop(value)
           if (!(name in proto)) defineProperty$1(proto, name.replace(/-([a-z])/g, function ($0, $1) {
@@ -678,6 +679,15 @@ var HyperHTMLElement = (function (exports) {
               if (value == null) this.removeAttribute(name);else this.setAttribute(name, value);
             }
           });
+        });
+
+        // if these are defined, overwrite the observedAttributes getter
+        // to include also booleanAttributes
+        var attributes = booleanAttributes.concat(observedAttributes);
+        if (attributes.length) defineProperty$1(Class, 'observedAttributes', {
+          get: function get$$1() {
+            return attributes;
+          }
         });
 
         // created() {}
