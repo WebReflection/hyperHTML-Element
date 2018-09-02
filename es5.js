@@ -536,6 +536,11 @@ var HyperHTMLElement = (function (exports) {
   var setPrototypeOf = O.setPrototypeOf || function (o, p) {
     return o.__proto__ = p, o;
   };
+  var camel = function camel(name) {
+    return name.replace(/-([a-z])/g, function ($0, $1) {
+      return $1.toUpperCase();
+    });
+  };
 
   var HyperHTMLElement = _fixBabelExtend(function (_HTMLElement) {
     inherits(HyperHTMLElement, _HTMLElement);
@@ -549,12 +554,12 @@ var HyperHTMLElement = (function (exports) {
       key: 'render',
 
 
+      // overwrite this method with your own render
+      value: function render() {}
+
       // ---------------------//
       // Basic State Handling //
       // ---------------------//
-
-      // overwrite this method with your own render
-      value: function render() {}
 
       // define the default state object
       // you could use observed properties too
@@ -643,9 +648,7 @@ var HyperHTMLElement = (function (exports) {
         // Boolean attributes are also automatically observed.
         var booleanAttributes = Class.booleanAttributes || [];
         booleanAttributes.forEach(function (name) {
-          if (!(name in proto)) defineProperty$1(proto, name.replace(/-([a-z])/g, function ($0, $1) {
-            return $1.toUpperCase();
-          }), {
+          if (!(name in proto)) defineProperty$1(proto, camel(name), {
             configurable: true,
             get: function get$$1() {
               return this.hasAttribute(name);
@@ -668,9 +671,7 @@ var HyperHTMLElement = (function (exports) {
         observedAttributes.forEach(function (name) {
           // it is possible to redefine the behavior at any time
           // simply overwriting get prop() and set prop(value)
-          if (!(name in proto)) defineProperty$1(proto, name.replace(/-([a-z])/g, function ($0, $1) {
-            return $1.toUpperCase();
-          }), {
+          if (!(name in proto)) defineProperty$1(proto, camel(name), {
             configurable: true,
             get: function get$$1() {
               return this.getAttribute(name);
@@ -697,73 +698,54 @@ var HyperHTMLElement = (function (exports) {
         // It is ensured to run either after DOMContentLoaded,
         // or once there is a next sibling (stream-friendly) so that
         // you have full access to element attributes and/or childNodes.
-        var created = proto.created;
-        if (created) {
-          // used to ensure create() is called once and once only
-          defineProperty$1(proto, '_init$', {
-            configurable: true,
-            writable: true,
-            value: true
-          });
+        var created = proto.created || function () {
+          this.render();
+        };
 
-          // allow arbitrary invoke of `el.created()`
-          // handy to monkey patch old Firefox or others
-          defineProperty$1(proto, 'created', {
-            value: function value() {
-              if (this._init$) checkReady.call(this, created);
-            }
-          });
+        // used to ensure create() is called once and once only
+        defineProperty$1(proto, '_init$', {
+          configurable: true,
+          writable: true,
+          value: true
+        });
 
-          // ⚠️ if you need to overwrite/change attributeChangedCallback method
-          //    at runtime after class definition, be sure you do so
-          //    via Object.defineProperty to preserve its non-enumerable nature.
-          defineProperty$1(proto, ATTRIBUTE_CHANGED_CALLBACK, {
-            configurable: true,
-            value: function aCC(name, prev, curr) {
-              if (this._init$) {
-                checkReady.call(this, created);
-                if (this._init$) return this._init$$.push(aCC.bind(this, name, prev, curr));
-              }
-              // ensure setting same value twice
-              // won't trigger twice attributeChangedCallback
-              if (hasChange && prev !== curr) {
-                onChanged.apply(this, arguments);
-              }
-            }
-          });
+        // allow arbitrary invoke of `el.created()`
+        // handy to monkey patch old Firefox or others
+        defineProperty$1(proto, 'created', {
+          value: function value() {
+            if (this._init$) checkReady.call(this, created);
+          }
+        });
 
-          // ⚠️ if you need to overwrite/change connectedCallback method
-          //    at runtime after class definition, be sure you do so
-          //    via Object.defineProperty to preserve its non-enumerable nature.
-          var onConnected = proto.connectedCallback;
-          var hasConnect = !!onConnected;
-          defineProperty$1(proto, 'connectedCallback', {
-            configurable: true,
-            value: function cC() {
-              if (this._init$) {
-                checkReady.call(this, created);
-                if (this._init$) return this._init$$.push(cC.bind(this));
-              }
-              if (hasConnect) {
-                onConnected.apply(this, arguments);
-              }
+        defineProperty$1(proto, ATTRIBUTE_CHANGED_CALLBACK, {
+          configurable: true,
+          value: function aCC(name, prev, curr) {
+            if (this._init$) {
+              checkReady.call(this, created);
+              if (this._init$) return this._init$$.push(aCC.bind(this, name, prev, curr));
             }
-          });
-        } else if (hasChange) {
-          // ⚠️ if you need to overwrite/change attributeChangedCallback method
-          //    at runtime after class definition, be sure you do so
-          //    via Object.defineProperty to preserve its non-enumerable nature.
-          defineProperty$1(proto, ATTRIBUTE_CHANGED_CALLBACK, {
-            configurable: true,
-            value: function value(name, prev, curr) {
-              // ensure setting same value twice
-              // won't trigger twice attributeChangedCallback
-              if (prev !== curr) {
-                onChanged.apply(this, arguments);
-              }
+            // ensure setting same value twice
+            // won't trigger twice attributeChangedCallback
+            if (hasChange && prev !== curr) {
+              onChanged.apply(this, arguments);
             }
-          });
-        }
+          }
+        });
+
+        var onConnected = proto.connectedCallback;
+        var hasConnect = !!onConnected;
+        defineProperty$1(proto, 'connectedCallback', {
+          configurable: true,
+          value: function cC() {
+            if (this._init$) {
+              checkReady.call(this, created);
+              if (this._init$) return this._init$$.push(cC.bind(this));
+            }
+            if (hasConnect) {
+              onConnected.apply(this, arguments);
+            }
+          }
+        });
 
         // define lazily all handlers
         // class { handleClick() { ... }
@@ -789,9 +771,6 @@ var HyperHTMLElement = (function (exports) {
         //    render() { this.html`<input oninput="${this}">`; }
         //  }
         if (!('handleEvent' in proto)) {
-          // ⚠️ if you need to overwrite/change handleEvent method
-          //    at runtime after class definition, be sure you do so
-          //    via Object.defineProperty to preserve its non-enumerable nature.
           defineProperty$1(proto, 'handleEvent', {
             configurable: true,
             value: function value(event) {
