@@ -709,14 +709,6 @@ var HyperHTMLElement = (function (exports) {
           value: true
         });
 
-        // allow arbitrary invoke of `el.created()`
-        // handy to monkey patch old Firefox or others
-        defineProperty$1(proto, 'created', {
-          value: function value() {
-            if (this._init$) checkReady.call(this, created);
-          }
-        });
-
         defineProperty$1(proto, ATTRIBUTE_CHANGED_CALLBACK, {
           configurable: true,
           value: function aCC(name, prev, curr) {

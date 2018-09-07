@@ -64,7 +64,6 @@ tressa.assert(customElements.get('my-el') === MyElement, '<my-el> defined in the
 tressa.assert(new MyLink instanceof HyperHTMLElement, '<my-link> is an instance');
 
 let el = new MyElement();
-el.created();
 tressa.assert(el.special === false, 'nothing special about this el');
 document.body.appendChild(el).key = 'value';
 setTimeout(function () { document.body.appendChild(document.createElement('p')); }, 50);

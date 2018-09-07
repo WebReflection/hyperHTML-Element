@@ -117,19 +117,6 @@ class HyperHTMLElement extends HTMLElement {
       }
     );
 
-    // allow arbitrary invoke of `el.created()`
-    // handy to monkey patch old Firefox or others
-    defineProperty(
-      proto,
-      'created',
-      {
-        value() {
-          if (this._init$)
-            checkReady.call(this, created);
-        }
-      }
-    );
-
     defineProperty(
       proto,
       ATTRIBUTE_CHANGED_CALLBACK,
