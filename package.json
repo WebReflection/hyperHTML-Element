@@ -110,6 +110,6 @@
     "uglify-es": "^3.3.9"
   },
   "dependencies": {
-    "hyperhtml": "^2.19.1"
+    "hyperhtml": "2.18.0"
   }
 }
