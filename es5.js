@@ -1414,7 +1414,7 @@ var HyperHTMLElement = (function (exports) {
     }
   }();
 
-  var G = document.defaultView; // Node.CONSTANTS
+  // Node.CONSTANTS
   var DOCUMENT_FRAGMENT_NODE$1 = 11; // SVG related constants
 
   var OWNER_SVG_ELEMENT = 'ownerSVGElement'; // Custom Elements / MutationObserver constants
@@ -1944,7 +1944,6 @@ var HyperHTMLElement = (function (exports) {
   // i.e. those still targeting IE
 
   hyper._ = {
-    global: G,
     WeakMap: WeakMap$1,
     WeakSet: WeakSet$1
   }; // the wire content is the lazy defined

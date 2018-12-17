@@ -1451,7 +1451,7 @@ var HyperHTMLElement = (function (exports) {
     }
   }());
 
-  const G = document.defaultView;
+  // Node.CONSTANTS
   const DOCUMENT_FRAGMENT_NODE$1 = 11;
 
   // SVG related constants
@@ -2000,7 +2000,6 @@ var HyperHTMLElement = (function (exports) {
   // that don't necessarily need upfront polyfills
   // i.e. those still targeting IE
   hyper._ = {
-    global: G,
     WeakMap: WeakMap$1,
     WeakSet: WeakSet$1
   };
