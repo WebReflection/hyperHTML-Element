@@ -104,6 +104,6 @@
     "uglify-es": "^3.3.9"
   },
   "dependencies": {
-    "hyperhtml": "^2.22.0"
+    "hyperhtml": "^2.22.1"
   }
 }
