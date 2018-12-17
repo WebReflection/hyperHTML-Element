@@ -1,6 +1,6 @@
 /*! (C) 2017-2018 Andrea Giammarchi - ISC Style License */
 
-import {Component, bind, define, hyper, wire} from 'hyperhtml/esm';
+import {Component, bind, define, hyper, wire} from 'hyperhtml';
 
 // utils to deal with custom elements builtin extends
 const ATTRIBUTE_CHANGED_CALLBACK = 'attributeChangedCallback';

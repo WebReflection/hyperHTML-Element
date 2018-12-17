@@ -1,22 +1,18 @@
-import babel from "rollup-plugin-babel";
-import babelrc from "babelrc-rollup";
-
-import cdn from "rollup-plugin-cdn";
-import resolve from "rollup-plugin-node-resolve";
+import resolve from 'rollup-plugin-node-resolve';
+import babel from 'rollup-plugin-babel';
 
 export default {
   input: 'esm/index.js',
+  plugins: [
+    resolve({module: true}),
+    babel({presets: ["@babel/preset-env"]})
+  ],
+  context: 'null',
+  moduleContext: 'null',
   output: {
     exports: 'named',
     file: 'es5.js',
     format: 'iife',
     name: 'HyperHTMLElement'
-  },
-  plugins: [
-    cdn(),
-    resolve({
-      module: true
-    }),
-    babel(babelrc())
-  ]
+  }
 };

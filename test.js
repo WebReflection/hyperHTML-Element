@@ -1,7 +1,8 @@
 const tressa = require('tressa');
-const {Document, Event, HTMLElement} = require('basichtml');
+const {CustomEvent, Document, HTMLElement} = require('basichtml');
 
 global.document = new Document();
+global.CustomEvent = CustomEvent;
 global.customElements = document.customElements;
 global.HTMLElement = HTMLElement;
 
@@ -70,7 +71,7 @@ setTimeout(function () { document.body.appendChild(document.createElement('p'));
 
 setTimeout(function () {
 
-  document.dispatchEvent(new Event('DOMContentLoaded'));
+  document.dispatchEvent(new CustomEvent('DOMContentLoaded'));
 
   tressa.assert(el.method.length === 3, 'all methods invoked');
   tressa.assert(el.method.join('connectedCallback,attributeChangedCallback,created'), 'with the right order');
@@ -83,7 +84,7 @@ setTimeout(function () {
   tressa.assert(el.outerHTML === '<my-el key="value">Hello <strong>HyperHTMLElement</strong></my-el>', 'the layout is the expected one');
 
   document.readyState = 'complete';
-  document.dispatchEvent(new Event('DOMContentLoaded'));
+  document.dispatchEvent(new CustomEvent('DOMContentLoaded'));
 
   delete require.cache[require.resolve('./cjs')];
   HyperHTMLElement = require('./cjs').default;
@@ -245,7 +246,7 @@ setTimeout(function () {
 
   el = new MyRealHandler();
   document.body.insertBefore(el, document.body.lastChild);
-  var evt = new Event('click');
+  var evt = new CustomEvent('click');
   el.firstChild.dispatchEvent(evt);
 
   // reaches currentTarget without a dataset
@@ -263,12 +264,12 @@ setTimeout(function () {
 
   el = new MyDelegatedHandler();
   document.body.appendChild(el);
-  var evt = new Event('click');
+  var evt = new CustomEvent('click');
   el.firstChild.dispatchEvent(evt);
 
   Object.defineProperty(el.firstChild, 'dataset', {value: null});
   el.firstChild.onclick = el.whenClickHappens;
-  el.firstChild.dispatchEvent(new Event('click'));
+  el.firstChild.dispatchEvent(new CustomEvent('click'));
 
 
   // double created

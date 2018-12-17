@@ -1,7 +1,7 @@
 'use strict';
 /*! (C) 2017-2018 Andrea Giammarchi - ISC Style License */
 
-const {Component, bind, define, hyper, wire} = require('hyperhtml/cjs');
+const {Component, bind, define, hyper, wire} = require('hyperhtml');
 
 // utils to deal with custom elements builtin extends
 const ATTRIBUTE_CHANGED_CALLBACK = 'attributeChangedCallback';
