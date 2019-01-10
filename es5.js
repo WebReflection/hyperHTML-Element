@@ -1422,6 +1422,7 @@ var HyperHTMLElement = (function (exports) {
   var CONNECTED = 'connected';
   var DISCONNECTED = 'dis' + CONNECTED;
 
+  /*! (c) Andrea Giammarchi - ISC */
   var templateLiteral = function () {
 
     var RAW = 'raw';
@@ -1431,25 +1432,29 @@ var HyperHTMLElement = (function (exports) {
       if ( // for badly transpiled literals
       !(RAW in tl) || // for some version of TypeScript
       tl.propertyIsEnumerable(RAW) || // and some other version of TypeScript
-      !Object.isFrozen(tl.raw) || // or for Firefox < 55
+      !Object.isFrozen(tl[RAW]) || // or for Firefox < 55
       /Firefox\/(\d+)/.test((document.defaultView.navigator || {}).userAgent) && parseFloat(RegExp.$1) < 55) {
         var forever = {};
 
         _templateLiteral = function templateLiteral(tl) {
-          var key = RAW + tl.join(RAW);
+          for (var key = '.', i = 0; i < tl.length; i++) {
+            key += tl[i].length + '.' + tl[i];
+          }
+
           return forever[key] || (forever[key] = tl);
         };
-
-        return _templateLiteral(tl);
       } else {
         isNoOp = true;
-        return tl;
       }
+
+      return TL(tl);
     };
 
-    return function (tl) {
+    return TL;
+
+    function TL(tl) {
       return isNoOp ? tl : _templateLiteral(tl);
-    };
+    }
   }();
 
   var doc = function doc(node) {
@@ -1631,8 +1636,12 @@ var HyperHTMLElement = (function (exports) {
             };
           } else if (name in Intent.attributes) {
             return function (any) {
-              oldValue = Intent.attributes[name](node, any);
-              node.setAttribute(name, oldValue == null ? '' : oldValue);
+              var newValue = Intent.attributes[name](node, any);
+
+              if (oldValue !== newValue) {
+                oldValue = newValue;
+                if (newValue == null) node.removeAttribute(name);else node.setAttribute(name, newValue);
+              }
             };
           } // in every other case, use the attribute node as it is
           // update only the value, set it as node only when/if needed
