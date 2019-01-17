@@ -375,7 +375,7 @@ var HyperHTMLElement = (function (exports) {
             futureStart++,
             futureStart,
             currentIndex < currentLength ?
-              get(currentNodes[currentIndex], 1) :
+              get(currentNodes[currentIndex], 0) :
               before
           );
           break;
@@ -801,7 +801,7 @@ var HyperHTMLElement = (function (exports) {
             event.component = this;
             return (_wire$.dispatchEvent ?
                       _wire$ :
-                      _wire$.childNodes[0]
+                      _wire$.firstChild
                     ).dispatchEvent(event);
           }
           return false;
@@ -848,6 +848,15 @@ var HyperHTMLElement = (function (exports) {
         value
     })[secret]
   ;
+
+  Object.defineProperties(
+    Component.prototype,
+    {
+      // used to distinguish better than instanceof
+      ELEMENT_NODE: {value: 1},
+      nodeType: {value: -1}
+    }
+  );
 
   const attributes = {};
   const intents = {};
@@ -1451,6 +1460,54 @@ var HyperHTMLElement = (function (exports) {
     }
   }());
 
+  /*! (c) Andrea Giammarchi - ISC */
+  var Wire = (function (slice, proto) {
+
+    proto = Wire.prototype;
+
+    proto.ELEMENT_NODE = 1;
+    proto.nodeType = 111;
+
+    proto.remove = function (keepFirst) {
+      var childNodes = this.childNodes;
+      var first = this.firstChild;
+      var last = this.lastChild;
+      this._ = null;
+      if (keepFirst && childNodes.length === 2) {
+        last.parentNode.removeChild(last);
+      } else {
+        var range = this.ownerDocument.createRange();
+        range.setStartBefore(keepFirst ? childNodes[1] : first);
+        range.setEndAfter(last);
+        range.deleteContents();
+      }
+      return first;
+    };
+
+    proto.valueOf = function (forceAppend) {
+      var fragment = this._;
+      var noFragment = fragment == null;
+      if (noFragment)
+        fragment = (this._ = this.ownerDocument.createDocumentFragment());
+      if (noFragment || forceAppend) {
+        for (var n = this.childNodes, i = 0, l = n.length; i < l; i++)
+          fragment.appendChild(n[i]);
+      }
+      return fragment;
+    };
+
+    return Wire;
+
+    function Wire(childNodes) {
+      var nodes = (this.childNodes = slice.call(childNodes, 0));
+      this.firstChild = nodes[0];
+      this.lastChild = nodes[nodes.length - 1];
+      this.ownerDocument = nodes[0].ownerDocument;
+      this._ = null;
+    }
+
+  }([].slice));
+
   // Node.CONSTANTS
   const DOCUMENT_FRAGMENT_NODE$1 = 11;
 
@@ -1461,109 +1518,8 @@ var HyperHTMLElement = (function (exports) {
   const CONNECTED = 'connected';
   const DISCONNECTED = 'dis' + CONNECTED;
 
-  /*! (c) Andrea Giammarchi - ISC */
-  var templateLiteral = (function () {  var RAW = 'raw';
-    var isNoOp = false;
-    var templateLiteral = function (tl) {
-      if (
-        // for badly transpiled literals
-        !(RAW in tl) ||
-        // for some version of TypeScript
-        tl.propertyIsEnumerable(RAW) ||
-        // and some other version of TypeScript
-        !Object.isFrozen(tl[RAW]) ||
-        (
-          // or for Firefox < 55
-          /Firefox\/(\d+)/.test(
-            (document.defaultView.navigator || {}).userAgent
-          ) &&
-          parseFloat(RegExp.$1) < 55
-        )
-      ) {
-        var forever = {};
-        templateLiteral = function (tl) {
-          for (var key = '.', i = 0; i < tl.length; i++)
-            key += tl[i].length + '.' + tl[i];
-          return forever[key] || (forever[key] = tl);
-        };
-      } else {
-        isNoOp = true;
-      }
-      return TL(tl);
-    };
-    return TL;
-    function TL(tl) {
-      return isNoOp ? tl : templateLiteral(tl);
-    }
-  }());
-
-  // these are tiny helpers to simplify most common operations needed here
-  const doc = node => node.ownerDocument || node;
-  const fragment = node => doc(node).createDocumentFragment();
-  const text = (node, text) => doc(node).createTextNode(text);
-
-  // appends an array of nodes
-  // to a generic node/fragment
-  // When available, uses append passing all arguments at once
-  // hoping that's somehow faster, even if append has more checks on type
-  // istanbul ignore next
-  const append$1 = 'append' in fragment(document) ?
-    (node, childNodes) => {
-      node.append.apply(node, childNodes);
-    } :
-    (node, childNodes) => {
-      const length = childNodes.length;
-      for (let i = 0; i < length; i++) {
-        node.appendChild(childNodes[i]);
-      }
-    };
-
-  // normalizes the template once for all arguments cases
-  const reArguments = function (template) {
-    const args = [templateLiteral(template)];
-    for (let i = 1, length = arguments.length; i < length; i++)
-      args[i] = arguments[i];
-    return args;
-  };
-
-  // just recycling a one-off array to use slice
-  // in every needed place
-  const slice = [].slice;
-
-  function Wire(childNodes) {
-    this.childNodes = childNodes;
-    this.length = childNodes.length;
-    this.first = childNodes[0];
-    this.last = childNodes[this.length - 1];
-    this._ = null;
-  }
-
-  // when a wire is inserted, all its nodes will follow
-  Wire.prototype.valueOf = function valueOf(different) {
-    const noFragment = this._ == null;
-    if (noFragment)
-      this._ = fragment(this.first);
-    /* istanbul ignore else */
-    if (noFragment || different)
-      append$1(this._, this.childNodes);
-    return this._;
-  };
-
-  // when a wire is removed, all its nodes must be removed as well
-  Wire.prototype.remove = function remove() {
-    this._ = null;
-    const first = this.first;
-    const last = this.last;
-    if (this.length === 2) {
-      last.parentNode.removeChild(last);
-    } else {
-      const range = doc(first).createRange();
-      range.setStartBefore(this.childNodes[1]);
-      range.setEndAfter(last);
-      range.deleteContents();
-    }
-    return first;
-  };
+  const componentType = Component.prototype.nodeType;
+  const wireType = Wire.prototype.nodeType;
 
   const observe = disconnected({Event: CustomEvent$1, WeakSet: WeakSet$1});
 
@@ -1572,24 +1528,24 @@ var HyperHTMLElement = (function (exports) {
 
   // returns nodes from wires and components
   const asNode = (item, i) => {
-    return 'ELEMENT_NODE' in item ?
-      item :
-      (item.constructor === Wire ?
+    switch (item.nodeType) {
+      case wireType:
         // in the Wire case, the content can be
         // removed, post-pended, inserted, or pre-pended and
         // all these cases are handled by domdiff already
         /* istanbul ignore next */
-        ((1 / i) < 0 ?
-          (i ? item.remove() : item.last) :
-          (i ? item.valueOf(true) : item.first)) :
-        asNode(item.render(), i));
+        return (1 / i) < 0 ?
+          (i ? item.remove(true) : item.lastChild) :
+          (i ? item.valueOf(true) : item.firstChild);
+      case componentType:
+        return asNode(item.render(), i);
+      default:
+        return item;
+    }
   };
 
   // returns true if domdiff can handle the value
-  const canDiff = value =>
-                    'ELEMENT_NODE' in value ||
-                    value instanceof Wire ||
-                    value instanceof Component;
+  const canDiff = value => 'ELEMENT_NODE' in value;
 
   // when a Promise is used as interpolation value
   // its result must be parsed once resolved.
@@ -1613,6 +1569,12 @@ var HyperHTMLElement = (function (exports) {
 
   // list of attributes that should not be directly assigned
   const readOnly = /^(?:form|list)$/i;
+
+  // reused every slice time
+  const slice = [].slice;
+
+  // simplifies text node creation
+  const text = (node, text) => node.ownerDocument.createTextNode(text);
 
   function Tagger(type) {
     this.type = type;
@@ -1880,6 +1842,51 @@ var HyperHTMLElement = (function (exports) {
     }
   };
 
+  /*! (c) Andrea Giammarchi - ISC */
+  var templateLiteral = (function () {  var RAW = 'raw';
+    var isNoOp = typeof document !== 'object';
+    var templateLiteral = function (tl) {
+      if (
+        // for badly transpiled literals
+        !(RAW in tl) ||
+        // for some version of TypeScript
+        tl.propertyIsEnumerable(RAW) ||
+        // and some other version of TypeScript
+        !Object.isFrozen(tl[RAW]) ||
+        (
+          // or for Firefox < 55
+          /Firefox\/(\d+)/.test(
+            (document.defaultView.navigator || {}).userAgent
+          ) &&
+          parseFloat(RegExp.$1) < 55
+        )
+      ) {
+        var forever = {};
+        templateLiteral = function (tl) {
+          for (var key = '.', i = 0; i < tl.length; i++)
+            key += tl[i].length + '.' + tl[i];
+          return forever[key] || (forever[key] = tl);
+        };
+      } else {
+        isNoOp = true;
+      }
+      return TL(tl);
+    };
+    return TL;
+    function TL(tl) {
+      return isNoOp ? tl : templateLiteral(tl);
+    }
+  }());
+
+  function tta (template) {
+    var length = arguments.length;
+    var args = [templateLiteral(template)];
+    var i = 1;
+    while (i < length)
+      args.push(arguments[i++]);
+    return args;
+  }
+
   // all wires used per each context
   const wires = new WeakMap$1;
 
@@ -1905,7 +1912,7 @@ var HyperHTMLElement = (function (exports) {
   const content = type => {
     let wire, tagger, template;
     return function () {
-      const args = reArguments.apply(null, arguments);
+      const args = tta.apply(null, arguments);
       if (template !== args[0]) {
         template = args[0];
         tagger = new Tagger(type);
@@ -1947,9 +1954,10 @@ var HyperHTMLElement = (function (exports) {
   // array of nodes or to this single referenced node.
   const wireContent = node => {
     const childNodes = node.childNodes;
-    return childNodes.length === 1 ?
+    const {length} = childNodes;
+    return length === 1 ?
       childNodes[0] :
-      new Wire(slice.call(childNodes, 0));
+      (length ? new Wire(childNodes) : node);
   };
 
   // a weak collection of contexts that
@@ -1962,7 +1970,7 @@ var HyperHTMLElement = (function (exports) {
   // The `this` context is either a regular DOM node or a fragment.
   function render() {
     const wicked = bewitched.get(this);
-    const args = reArguments.apply(null, arguments);
+    const args = tta.apply(null, arguments);
     if (wicked && wicked.template === args[0]) {
       wicked.tagger.apply(null, args);
     } else {
@@ -1975,13 +1983,12 @@ var HyperHTMLElement = (function (exports) {
   // parse it once, if unknown, to map all interpolations
   // as single DOM callbacks, relate such template
   // to the current context, and render it after cleaning the context up
-  function upgrade() {
-    const args = reArguments.apply(null, arguments);
+  function upgrade(template) {
     const type = OWNER_SVG_ELEMENT in this ? 'svg' : 'html';
     const tagger = new Tagger(type);
-    bewitched.set(this, {tagger, template: args[0]});
+    bewitched.set(this, {tagger, template: template});
     this.textContent = '';
-    this.appendChild(tagger.apply(null, args));
+    this.appendChild(tagger.apply(null, arguments));
   }
 
   /*! (c) Andrea Giammarchi (ISC) */
