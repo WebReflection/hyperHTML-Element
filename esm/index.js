@@ -16,6 +16,8 @@ const ownKeys = typeof Reflect === 'object' && Reflect.ownKeys ||
 const setPrototypeOf = O.setPrototypeOf ||
                       ((o, p) => (o.__proto__ = p, o));
 const camel = name => name.replace(/-([a-z])/g, ($0, $1) => $1.toUpperCase());
+const {attachShadow} = HTMLElement.prototype;
+const sr = new WeakMap;
 
 class HyperHTMLElement extends HTMLElement {
 
@@ -228,21 +230,37 @@ class HyperHTMLElement extends HTMLElement {
     return Class;
   }
 
+  // weakly relate the shadowRoot for refs usage
+  attachShadow() {
+    const shadowRoot = attachShadow.apply(this, arguments);
+    sr.set(this, shadowRoot);
+    return shadowRoot;
+  }
+
+  // returns elements by ref
+  get refs() {
+    const value = {};
+    if ('_html$' in this) {
+      const all = (sr.get(this) || this).querySelectorAll('[ref]');
+      for (let {length} = all, i = 0; i < length; i++) {
+        const node = all[i];
+        value[node.getAttribute('ref')] = node;
+      }
+      Object.defineProperty(this, 'refs', {value});
+      return value;
+    }
+    return value;
+  }
+
   // lazily bind once hyperHTML logic
   // to either the shadowRoot, if present and open,
   // the _shadowRoot property, if set due closed shadow root,
   // or the custom-element itself if no Shadow DOM is used.
   get html() {
     return this._html$ || (this.html = bind(
-      // in case of Shadow DOM {mode: "open"}, use it
-      this.shadowRoot ||
-      // in case of Shadow DOM {mode: "close"}, use it
-      // this needs the following reference created upfront
-      // this._shadowRoot = this.attachShadow({mode: "close"});
-      this._shadowRoot ||
-      // if no Shadow DOM is used, simply use the component
-      // as container for its own content (it just works too)
-      this
+      // in a way or another, bind to the right node
+      // backward compatible, first two could probably go already
+      this.shadowRoot || this._shadowRoot || sr.get(this) || this
     ));
   }
 

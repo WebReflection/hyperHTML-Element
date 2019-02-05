@@ -257,12 +257,13 @@ setTimeout(function () {
   // delegated handleEvent
   class MyDelegatedHandler extends HyperHTMLElement {
     whenClickHappens() { tressa.assert(true, 'whenClickHappens event dispatched'); }
-    created() { this.html`<span data-call="whenClickHappens" onclick="${this}">click me</span>`; }
+    created() { this.html`<span ref="span" data-call="whenClickHappens" onclick="${this}">click me</span>`; }
   }
 
   MyDelegatedHandler.define('my-delegated-handler');
 
   el = new MyDelegatedHandler();
+  tressa.assert(!el.refs.span, 'no span until created');
   document.body.appendChild(el);
   var evt = new CustomEvent('click');
   el.firstChild.dispatchEvent(evt);
@@ -271,6 +272,17 @@ setTimeout(function () {
   el.firstChild.onclick = el.whenClickHappens;
   el.firstChild.dispatchEvent(new CustomEvent('click'));
 
+  tressa.assert(el.refs.span === el.querySelector('span'), 'span after creation');
+
+  class MyShadow extends HyperHTMLElement {
+    constructor() {
+      super();
+      this.attachShadow({mode: 'open'});
+      this.html`<p ref="gotcha" />`;
+    }
+  }
+
+  tressa.assert(!!(new MyShadow).refs.gotcha, 'ref works in shadow dom too');
 
   // double created
   let createdInstances = 0;

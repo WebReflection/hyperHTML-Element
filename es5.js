@@ -2011,6 +2011,9 @@ var HyperHTMLElement = (function (exports) {
     });
   };
 
+  var _attachShadow = HTMLElement.prototype.attachShadow;
+  var sr = new WeakMap();
+
   var HyperHTMLElement =
   /*#__PURE__*/
   function (_HTMLElement) {
@@ -2023,6 +2026,16 @@ var HyperHTMLElement = (function (exports) {
     }
 
     _createClass(HyperHTMLElement, [{
+      key: "attachShadow",
+      // weakly relate the shadowRoot for refs usage
+      value: function attachShadow() {
+        var shadowRoot = _attachShadow.apply(this, arguments);
+
+        sr.set(this, shadowRoot);
+        return shadowRoot;
+      } // returns elements by ref
+
+    }, {
       key: "render",
       // overwrite this method with your own render
       value: function render() {} // ---------------------//
@@ -2048,19 +2061,36 @@ var HyperHTMLElement = (function (exports) {
         return this;
       }
     }, {
-      key: "html",
-      // lazily bind once hyperHTML logic
+      key: "refs",
+      get: function get() {
+        var value = {};
+
+        if ('_html$' in this) {
+          var all = (sr.get(this) || this).querySelectorAll('[ref]');
+
+          for (var length = all.length, i = 0; i < length; i++) {
+            var node = all[i];
+            value[node.getAttribute('ref')] = node;
+          }
+
+          Object.defineProperty(this, 'refs', {
+            value: value
+          });
+          return value;
+        }
+
+        return value;
+      } // lazily bind once hyperHTML logic
       // to either the shadowRoot, if present and open,
       // the _shadowRoot property, if set due closed shadow root,
       // or the custom-element itself if no Shadow DOM is used.
+
+    }, {
+      key: "html",
       get: function get() {
-        return this._html$ || (this.html = bind( // in case of Shadow DOM {mode: "open"}, use it
-        this.shadowRoot || // in case of Shadow DOM {mode: "close"}, use it
-        // this needs the following reference created upfront
-        // this._shadowRoot = this.attachShadow({mode: "close"});
-        this._shadowRoot || // if no Shadow DOM is used, simply use the component
-        // as container for its own content (it just works too)
-        this));
+        return this._html$ || (this.html = bind( // in a way or another, bind to the right node
+        // backward compatible, first two could probably go already
+        this.shadowRoot || this._shadowRoot || sr.get(this) || this));
       } // it can be set too if necessary, it won't invoke render()
       ,
       set: function set(value) {

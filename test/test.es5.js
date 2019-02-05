@@ -37,11 +37,12 @@ class MyInput extends HyperHTMLElement {
   oninput(e) {
     this.value = e.target.value;
     this.render();
+    console.assert(this.refs.input === this.querySelector('input'), 'input as ref');
   }
 
   render() {
     return this.html`
-    <input value="${this.value}" oninput="${this}">`;
+    <input ref="input" value="${this.value}" oninput="${this}">`;
   }
 
 }
