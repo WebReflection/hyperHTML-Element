@@ -1509,7 +1509,7 @@ var HyperHTMLElement = (function (exports) {
   }([].slice));
 
   // Node.CONSTANTS
-  const DOCUMENT_FRAGMENT_NODE$1 = 11;
+  const DOCUMENT_FRAGMENT_NODE = 11;
 
   // SVG related constants
   const OWNER_SVG_ELEMENT = 'ownerSVGElement';
@@ -1769,7 +1769,7 @@ var HyperHTMLElement = (function (exports) {
               childNodes = domdiff(
                 node.parentNode,
                 childNodes,
-                value.nodeType === DOCUMENT_FRAGMENT_NODE$1 ?
+                value.nodeType === DOCUMENT_FRAGMENT_NODE ?
                   slice.call(value.childNodes) :
                   [value],
                 diffOptions

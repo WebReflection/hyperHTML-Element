@@ -9,7 +9,14 @@ global.HTMLElement = HTMLElement;
 tressa.title('HyperHTMLElement');
 
 delete Object.getOwnPropertySymbols;
+const getPrototypeOf = Object.getPrototypeOf;
 delete Object.getPrototypeOf;
+let times = 0;
+Object.defineProperty(Object, 'getPrototypeOf', {
+  get() {
+    return times++ < 2 ? void 0 : getPrototypeOf;
+  }
+});
 delete Object.setPrototypeOf;
 delete Reflect.ownKeys;
 

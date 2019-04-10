@@ -168,7 +168,7 @@ var HyperHTMLElement = (function (exports) {
       var hOP = Object.hasOwnProperty;
       var proto = WeakMap.prototype;
 
-      proto.delete = function (key) {
+      proto["delete"] = function (key) {
         return this.has(key) && delete key[this._];
       };
 
@@ -228,7 +228,7 @@ var HyperHTMLElement = (function (exports) {
         return this.hasOwnProperty.call(object, this._);
       };
 
-      proto.delete = function (object) {
+      proto["delete"] = function (object) {
         return this.has(object) && delete object[this._];
       };
 
@@ -258,7 +258,7 @@ var HyperHTMLElement = (function (exports) {
       var k = [];
       var v = [];
       return {
-        delete: function _delete(key) {
+        "delete": function _delete(key) {
           var had = contains(key);
 
           if (had) {
@@ -738,7 +738,7 @@ var HyperHTMLElement = (function (exports) {
       // to automatically relate data/context to children components
       // If not created yet, the new Component(context) is weakly stored
       // and after that same instance would always be returned.
-      for: {
+      "for": {
         configurable: true,
         value: function value(context, id) {
           return get(this, children.get(context) || set(context), context, id == null ? 'default' : id);
@@ -1015,7 +1015,7 @@ var HyperHTMLElement = (function (exports) {
 
       function dispatchTarget(node, event, type, counter) {
         if (observer.has(node) && !dispatched[type].has(node)) {
-          dispatched[counter].delete(node);
+          dispatched[counter]["delete"](node);
           dispatched[type].add(node);
           node.dispatchEvent(event);
           /*
@@ -1048,13 +1048,14 @@ var HyperHTMLElement = (function (exports) {
 
   /*! (c) Andrea Giammarchi - ISC */
   var importNode = function (document, appendChild, cloneNode, createTextNode, importNode) {
-    var native = importNode in document; // IE 11 has problems with cloning templates:
+    var _native = importNode in document; // IE 11 has problems with cloning templates:
     // it "forgets" empty childNodes. This feature-detects that.
+
 
     var fragment = document.createDocumentFragment();
     fragment[appendChild](document[createTextNode]('g'));
     fragment[appendChild](document[createTextNode](''));
-    var content = native ? document[importNode](fragment, true) : fragment[cloneNode](true);
+    var content = _native ? document[importNode](fragment, true) : fragment[cloneNode](true);
     return content.childNodes.length < 2 ? function importNode(node, deep) {
       var clone = node[cloneNode]();
 
@@ -1063,7 +1064,7 @@ var HyperHTMLElement = (function (exports) {
       }
 
       return clone;
-    } : native ? document[importNode] : function (node, deep) {
+    } : _native ? document[importNode] : function (node, deep) {
       return node[cloneNode](!!deep);
     };
   }(document, 'appendChild', 'cloneNode', 'createTextNode', 'importNode');
@@ -1474,7 +1475,7 @@ var HyperHTMLElement = (function (exports) {
   }([].slice);
 
   // Node.CONSTANTS
-  var DOCUMENT_FRAGMENT_NODE$1 = 11; // SVG related constants
+  var DOCUMENT_FRAGMENT_NODE = 11; // SVG related constants
 
   var OWNER_SVG_ELEMENT = 'ownerSVGElement'; // Custom Elements / MutationObserver constants
 
@@ -1727,7 +1728,7 @@ var HyperHTMLElement = (function (exports) {
                 }
               }
             } else if (canDiff(value)) {
-              childNodes = domdiff(node.parentNode, childNodes, value.nodeType === DOCUMENT_FRAGMENT_NODE$1 ? slice.call(value.childNodes) : [value], diffOptions);
+              childNodes = domdiff(node.parentNode, childNodes, value.nodeType === DOCUMENT_FRAGMENT_NODE ? slice.call(value.childNodes) : [value], diffOptions);
             } else if (isPromise_ish(value)) {
               value.then(anyContent);
             } else if ('placeholder' in value) {
@@ -1993,7 +1994,7 @@ var HyperHTMLElement = (function (exports) {
     return [];
   };
 
-  var getPrototypeOf$$1 = O.getPrototypeOf || function (o) {
+  var getPrototypeOf = O.getPrototypeOf || function (o) {
     return o.__proto__;
   };
 
@@ -2122,7 +2123,7 @@ var HyperHTMLElement = (function (exports) {
       // define a custom-element in the CustomElementsRegistry
       // class MyEl extends HyperHTMLElement {}
       // MyEl.define('my-el');
-      value: function define$$1(name, options) {
+      value: function define(name, options) {
         var Class = this;
         var proto = Class.prototype;
         var onChanged = proto[ATTRIBUTE_CHANGED_CALLBACK];
@@ -2256,8 +2257,8 @@ var HyperHTMLElement = (function (exports) {
           });
         }
 
-        if (options && options.extends) {
-          var Native = document.createElement(options.extends).constructor;
+        if (options && options["extends"]) {
+          var Native = document.createElement(options["extends"]).constructor;
 
           var Intermediate =
           /*#__PURE__*/
@@ -2273,7 +2274,7 @@ var HyperHTMLElement = (function (exports) {
             return Intermediate;
           }(Native);
 
-          var Super = getPrototypeOf$$1(Class);
+          var Super = getPrototypeOf(Class);
           ownKeys(Super).filter(function (key) {
             return ['length', 'name', 'arguments', 'caller', 'prototype'].indexOf(key) < 0;
           }).forEach(function (key) {
@@ -2308,7 +2309,7 @@ var HyperHTMLElement = (function (exports) {
       enumerable: false,
       configurable: true,
       value: function value(instance) {
-        return classes.some(isPrototypeOf, getPrototypeOf$$1(instance));
+        return classes.some(isPrototypeOf, getPrototypeOf(instance));
       }
     }));
   } catch (meh) {}
