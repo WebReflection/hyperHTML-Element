@@ -88,6 +88,13 @@
     "url": "https://github.com/WebReflection/hyperHTML-Element/issues"
   },
   "homepage": "https://github.com/WebReflection/hyperHTML-Element#readme",
+  "greenkeeper": {
+    "ignore": [
+      "rollup",
+      "rollup-plugin-babel",
+      "rollup-plugin-node-resolve"
+    ]
+  },
   "devDependencies": {
     "@babel/cli": "^7.4.3",
     "@babel/core": "^7.4.3",
@@ -104,6 +111,6 @@
     "uglify-es": "^3.3.9"
   },
   "dependencies": {
-    "hyperhtml": "^2.27.0"
+    "hyperhtml": "^2.28.0"
   }
 }
