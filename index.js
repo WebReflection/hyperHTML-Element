@@ -1192,7 +1192,8 @@ var HyperHTMLElement = (function (exports) {
           parse(child, holes, parts, childPath);
           break;
         case COMMENT_NODE:
-          if (child.textContent === UID) {
+          var textContent = child.textContent;
+          if (textContent === UID) {
             parts.shift();
             holes.push(
               // basicHTML or other non standard engines
@@ -1202,6 +1203,16 @@ var HyperHTMLElement = (function (exports) {
                 create('text', node, path) :
                 create('any', child, path.concat(i))
             );
+          } else {
+            switch (textContent.slice(0, 2)) {
+              case '/*':
+                if (textContent.slice(-2) !== '*/')
+                  break;
+              case '\uD83D\uDC7B': // ghost
+                node.removeChild(child);
+                i--;
+                length--;
+            }
           }
           break;
         case TEXT_NODE:
@@ -1844,45 +1855,56 @@ var HyperHTMLElement = (function (exports) {
     }
   };
 
-  /*! (c) Andrea Giammarchi - ISC */
-  var templateLiteral = (function () {  var RAW = 'raw';
-    var isNoOp = typeof document !== 'object';
-    var templateLiteral = function (tl) {
-      if (
-        // for badly transpiled literals
-        !(RAW in tl) ||
-        // for some version of TypeScript
-        tl.propertyIsEnumerable(RAW) ||
-        // and some other version of TypeScript
-        !Object.isFrozen(tl[RAW]) ||
-        (
-          // or for Firefox < 55
-          /Firefox\/(\d+)/.test(
-            (document.defaultView.navigator || {}).userAgent
-          ) &&
-          parseFloat(RegExp.$1) < 55
-        )
-      ) {
-        var forever = {};
-        templateLiteral = function (tl) {
-          for (var key = '.', i = 0; i < tl.length; i++)
-            key += tl[i].length + '.' + tl[i];
-          return forever[key] || (forever[key] = tl);
-        };
-      } else {
-        isNoOp = true;
-      }
-      return TL(tl);
+  var isNoOp = typeof document !== 'object';
+
+  var templateLiteral = function (tl) {
+    var RAW = 'raw';
+    var isBroken = function (UA) {
+      return /(Firefox|Safari)\/(\d+)/.test(UA) &&
+            !/(Chrom|Android)\/(\d+)/.test(UA);
     };
-    return TL;
-    function TL(tl) {
-      return isNoOp ? tl : templateLiteral(tl);
+    var broken = isBroken((document.defaultView.navigator || {}).userAgent);
+    var FTS = !(RAW in tl) ||
+              tl.propertyIsEnumerable(RAW) ||
+              !Object.isFrozen(tl[RAW]);
+    if (broken || FTS) {
+      var forever = {};
+      var foreverCache = function (tl) {
+        for (var key = '.', i = 0; i < tl.length; i++)
+          key += tl[i].length + '.' + tl[i];
+        return forever[key] || (forever[key] = tl);
+      };
+      // Fallback TypeScript shenanigans
+      if (FTS)
+        templateLiteral = foreverCache;
+      // try fast path for other browsers:
+      // store the template as WeakMap key
+      // and forever cache it only when it's not there.
+      // this way performance is still optimal,
+      // penalized only when there are GC issues
+      else {
+        var wm = new WeakMap$1;
+        var set = function (tl, unique) {
+          wm.set(tl, unique);
+          return unique;
+        };
+        templateLiteral = function (tl) {
+          return wm.get(tl) || set(tl, foreverCache(tl));
+        };
+      }
+    } else {
+      isNoOp = true;
     }
-  }());
+    return TL(tl);
+  };
+
+  function TL(tl) {
+    return isNoOp ? tl : templateLiteral(tl);
+  }
 
   function tta (template) {
     var length = arguments.length;
-    var args = [templateLiteral(template)];
+    var args = [TL(template)];
     var i = 1;
     while (i < length)
       args.push(arguments[i++]);
