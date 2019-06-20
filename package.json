@@ -68,7 +68,7 @@
       ]
     },
     "test": {
-      "babel": "babel test/test.js > test/test.es5.js",
+      "babel": "babel --presets @babel/preset-env test/test.js > test/test.es5.js",
       "default": "istanbul cover test.js"
     }
   },
