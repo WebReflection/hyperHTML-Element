@@ -1,0 +1,33 @@
+<!doctype html>
+<html>
+  <head>
+    <title>HyperHTMLElement Custom Elements BuiltIn</title>
+    <script>if(this.customElements)try{customElements.define('built-in',document.createElement('p').constructor,{'extends':'p'})}catch(a){document.write('<script src="//unpkg.com/@ungap/custom-elements-builtin"><'+'/script>')}else document.write('<script src="//unpkg.com/document-register-element"><'+'/script>');</script>
+    <script src="../min.js"></script>
+    <script>
+    //*
+    class HyperTest extends HyperHTMLElement {
+      created() { alert(this.outerHTML); }
+    }
+    //*/
+
+    /*
+    function HyperTest(node) {
+      var constructor = HyperHTMLElement.bind(this, node);
+      var self = new constructor;
+      return Object.setPrototypeOf(self, HyperTest.prototype);
+    }
+    Object.setPrototypeOf(HyperTest, HyperHTMLElement);
+    Object.setPrototypeOf(HyperTest.prototype, HyperHTMLElement.prototype);
+    HyperTest.prototype.created = function () {
+      alert(this.outerHTML);
+    };
+    //*/
+
+    HyperTest.define('hyper-test', {extends: 'button'});
+    </script>
+  </head>
+  <body>
+    <button is="hyper-test">hello</button>
+  </body>
+</html>

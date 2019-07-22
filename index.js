@@ -97,14 +97,17 @@ var HyperHTMLElement = (function (exports) {
   var Map$1 = self$2.Map;
 
   const append = (get, parent, children, start, end, before) => {
-    if ((end - start) < 2)
-      parent.insertBefore(get(children[start], 1), before);
-    else {
-      const fragment = parent.ownerDocument.createDocumentFragment();
-      while (start < end)
-        fragment.appendChild(get(children[start++], 1));
-      parent.insertBefore(fragment, before);
+    const isSelect = 'selectedIndex' in parent;
+    let selectedIndex = -1;
+    while (start < end) {
+      const child = get(children[start], 1);
+      if (isSelect && selectedIndex < 0 && child.selected)
+        selectedIndex = start;
+      parent.insertBefore(child, before);
+      start++;
     }
+    if (isSelect && -1 < selectedIndex)
+      parent.selectedIndex = selectedIndex;
   };
 
   const eqeq = (a, b) => a == b;
@@ -1148,7 +1151,7 @@ var HyperHTMLElement = (function (exports) {
   var spaces = ' \\f\\n\\r\\t';
   var almostEverything = '[^' + spaces + '\\/>"\'=]+';
   var attrName = '[' + spaces + ']+' + almostEverything;
-  var tagName = '<([A-Za-z]+[A-Za-z0-9:_-]*)((?:';
+  var tagName = '<([A-Za-z]+[A-Za-z0-9:._-]*)((?:';
   var attrPartials = '(?:\\s*=\\s*(?:\'[^\']*?\'|"[^"]*?"|<[^>]*?>|' + almostEverything.replace('\\/', '') + '))?)';
 
   var attrSeeker = new RegExp(tagName + attrName + attrPartials + '+)([' + spaces + ']*/?>)', 'g');
@@ -1165,10 +1168,6 @@ var HyperHTMLElement = (function (exports) {
 
   function fullClosing($0, $1, $2) {
     return VOID_ELEMENTS.test($1) ? $0 : ('<' + $1 + $2 + '></' + $1 + '>');
-  }
-
-  function create(type, node, path, name) {
-    return {name: name, node: node, path: path, type: type};
   }
 
   function find(node, path) {
@@ -1200,8 +1199,8 @@ var HyperHTMLElement = (function (exports) {
               // might end up having comments in nodes
               // where they shouldn't, hence this check.
               SHOULD_USE_TEXT_CONTENT.test(node.nodeName) ?
-                create('text', node, path) :
-                create('any', child, path.concat(i))
+                Text(node, path) :
+                Any(child, path.concat(i))
             );
           } else {
             switch (textContent.slice(0, 2)) {
@@ -1226,7 +1225,7 @@ var HyperHTMLElement = (function (exports) {
             trim.call(child.textContent) === UIDC
           ) {
             parts.shift();
-            holes.push(create('text', node, path));
+            holes.push(Text(node, path));
           }
           break;
       }
@@ -1243,20 +1242,37 @@ var HyperHTMLElement = (function (exports) {
     var i = 0;
     while (i < length) {
       var attribute = array[i++];
-      if (attribute.value === UID) {
+      var direct = attribute.value === UID;
+      var sparse;
+      if (direct || 1 < (sparse = attribute.value.split(UIDC)).length) {
         var name = attribute.name;
         // the following ignore is covered by IE
         // and the IE9 double viewBox test
         /* istanbul ignore else */
         if (!cache.has(name)) {
-          var realName = parts.shift().replace(/^(?:|[\S\s]*?\s)(\S+?)\s*=\s*['"]?$/, '$1');
+          var realName = parts.shift().replace(
+            direct ?
+              /^(?:|[\S\s]*?\s)(\S+?)\s*=\s*('|")?$/ :
+              new RegExp(
+                '^(?:|[\\S\\s]*?\\s)(' + name + ')\\s*=\\s*(\'|")',
+                'i'
+              ),
+              '$1'
+          );
           var value = attributes[realName] ||
                         // the following ignore is covered by browsers
                         // while basicHTML is already case-sensitive
                         /* istanbul ignore next */
                         attributes[realName.toLowerCase()];
           cache.set(name, value);
-          holes.push(create('attr', value, path, realName));
+          if (direct)
+            holes.push(Attr(value, path, realName, null));
+          else {
+            var skip = sparse.length - 2;
+            while (skip--)
+              parts.shift();
+            holes.push(Attr(value, path, realName, sparse));
+          }
         }
         remove.push(attribute);
       }
@@ -1296,6 +1312,32 @@ var HyperHTMLElement = (function (exports) {
     }
   }
 
+  function Any(node, path) {
+    return {
+      type: 'any',
+      node: node,
+      path: path
+    };
+  }
+
+  function Attr(node, path, name, sparse) {
+    return {
+      type: 'attr',
+      node: node,
+      path: path,
+      name: name,
+      sparse: sparse
+    };
+  }
+
+  function Text(node, path) {
+    return {
+      type: 'text',
+      node: node,
+      path: path
+    };
+  }
+
   // globals
 
   var parsed = new WeakMap$1;
@@ -1313,37 +1355,59 @@ var HyperHTMLElement = (function (exports) {
     var info = {
       content: content,
       updates: function (content) {
-        var callbacks = [];
+        var updates = [];
         var len = holes.length;
         var i = 0;
+        var off = 0;
         while (i < len) {
           var info = holes[i++];
           var node = find(content, info.path);
           switch (info.type) {
             case 'any':
-              callbacks.push(options.any(node, []));
+              updates.push({fn: options.any(node, []), sparse: false});
               break;
             case 'attr':
-              callbacks.push(options.attribute(node, info.name, info.node));
+              var sparse = info.sparse;
+              var fn = options.attribute(node, info.name, info.node);
+              if (sparse === null)
+                updates.push({fn: fn, sparse: false});
+              else {
+                off += sparse.length - 2;
+                updates.push({fn: fn, sparse: true, values: sparse});
+              }
               break;
             case 'text':
-              callbacks.push(options.text(node));
+              updates.push({fn: options.text(node), sparse: false});
               node.textContent = '';
               break;
           }
         }
+        len += off;
         return function () {
           var length = arguments.length;
-          var values = length - 1;
-          var i = 1;
-          if (len !== values) {
+          if (len !== (length - 1)) {
             throw new Error(
-              values + ' values instead of ' + len + '\n' +
-              template.join(', ')
+              (length - 1) + ' values instead of ' + len + '\n' +
+              template.join('${value}')
             );
           }
-          while (i < length)
-            callbacks[i - 1](arguments[i++]);
+          var i = 1;
+          var off = 1;
+          while (i < length) {
+            var update = updates[i - off];
+            if (update.sparse) {
+              var values = update.values;
+              var value = values[0];
+              var j = 1;
+              var l = values.length;
+              off += l - 2;
+              while (j < l)
+                value += arguments[i++] + values[j++];
+              update.fn(value);
+            }
+            else
+              update.fn(arguments[i++]);
+          }
           return content;
         };
       }
