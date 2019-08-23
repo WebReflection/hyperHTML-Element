@@ -77,6 +77,14 @@ var HyperHTMLElement = (function (exports) {
           }
           return had;
         },
+        forEach: function forEach(callback, context) {
+          k.forEach(
+            function (key, i)  {
+              callback.call(context, v[i], key, this);
+            },
+            this
+          );
+        },
         get: function get(key) {
           return contains(key) ? v[i] : void 0;
         },
@@ -96,18 +104,22 @@ var HyperHTMLElement = (function (exports) {
   }
   var Map$1 = self$2.Map;
 
+  const {indexOf: iOF} = [];
   const append = (get, parent, children, start, end, before) => {
     const isSelect = 'selectedIndex' in parent;
-    let selectedIndex = -1;
+    let noSelection = isSelect;
     while (start < end) {
       const child = get(children[start], 1);
-      if (isSelect && selectedIndex < 0 && child.selected)
-        selectedIndex = start;
       parent.insertBefore(child, before);
+      if (isSelect && noSelection && child.selected) {
+        noSelection = !noSelection;
+        let {selectedIndex} = parent;
+        parent.selectedIndex = selectedIndex < 0 ?
+          start :
+          iOF.call(parent.querySelectorAll('option'), child);
+      }
       start++;
     }
-    if (isSelect && -1 < selectedIndex)
-      parent.selectedIndex = selectedIndex;
   };
 
   const eqeq = (a, b) => a == b;
@@ -1925,7 +1937,7 @@ var HyperHTMLElement = (function (exports) {
     var RAW = 'raw';
     var isBroken = function (UA) {
       return /(Firefox|Safari)\/(\d+)/.test(UA) &&
-            !/(Chrom|Android)\/(\d+)/.test(UA);
+            !/(Chrom[eium]+|Android)\/(\d+)/.test(UA);
     };
     var broken = isBroken((document.defaultView.navigator || {}).userAgent);
     var FTS = !(RAW in tl) ||
