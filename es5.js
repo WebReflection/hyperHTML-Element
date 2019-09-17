@@ -350,11 +350,8 @@ var HyperHTMLElement = (function (exports) {
     return i < length ? get(list[i], 0) : 0 < i ? get(list[i - 1], -0).nextSibling : before;
   };
   var remove = function remove(get, parent, children, start, end) {
-    if (end - start < 2) parent.removeChild(get(children[start], -1));else {
-      var range = parent.ownerDocument.createRange();
-      range.setStartBefore(get(children[start], -1));
-      range.setEndAfter(get(children[end - 1], -1));
-      range.deleteContents();
+    while (start < end) {
+      _removeChild(get(children[start++], -1), parent);
     }
   }; // - - - - - - - - - - - - - - - - - - -
   // diff related constants and utilities
@@ -573,6 +570,22 @@ var HyperHTMLElement = (function (exports) {
 
   var smartDiff = function smartDiff(get, parentNode, futureNodes, futureStart, futureEnd, futureChanges, currentNodes, currentStart, currentEnd, currentChanges, currentLength, compare, before) {
     applyDiff(OND(futureNodes, futureStart, futureChanges, currentNodes, currentStart, currentChanges, compare) || HS(futureNodes, futureStart, futureEnd, futureChanges, currentNodes, currentStart, currentEnd, currentChanges), get, parentNode, futureNodes, futureStart, currentNodes, currentStart, currentLength, before);
+  };
+
+  var _removeChild = function removeChild(child, parentNode) {
+    /* istanbul ignore if */
+    if ('remove' in child) {
+      _removeChild = function removeChild(child) {
+        child.remove();
+      };
+    } else {
+      _removeChild = function removeChild(child, parentNode) {
+        /* istanbul ignore else */
+        if (child.parentNode === parentNode) parentNode.removeChild(child);
+      };
+    }
+
+    _removeChild(child, parentNode);
   };
 
   /*! (c) 2018 Andrea Giammarchi (ISC) */
@@ -1080,11 +1093,14 @@ var HyperHTMLElement = (function (exports) {
   // Custom
   var UID = '-' + Math.random().toFixed(6) + '%'; //                           Edge issue!
 
+  var UID_IE = false;
+
   try {
     if (!function (template, content, tabindex) {
       return content in template && (template.innerHTML = '<p ' + tabindex + '="' + UID + '"></p>', template[content].childNodes[0].getAttribute(tabindex) == UID);
     }(document.createElement('template'), 'content', 'tabindex')) {
       UID = '_dt: ' + UID.slice(1, -1) + ';';
+      UID_IE = true;
     }
   } catch (meh) {}
 
@@ -1210,7 +1226,13 @@ var HyperHTMLElement = (function (exports) {
         /* istanbul ignore else */
 
         if (!cache.has(name)) {
-          var realName = parts.shift().replace(direct ? /^(?:|[\S\s]*?\s)(\S+?)\s*=\s*('|")?$/ : new RegExp('^(?:|[\\S\\s]*?\\s)(' + name + ')\\s*=\\s*(\'|")', 'i'), '$1');
+          var realName = parts.shift().replace(direct ? /^(?:|[\S\s]*?\s)(\S+?)\s*=\s*('|")?$/ : // TODO: while working on yet another IE/Edge bug I've realized
+          //        the current not direct logic easily breaks there
+          //        because the `name` might not be the real needed one.
+          //        Use a better RegExp to find last attribute instead
+          //        of trusting `name` is what we are looking for.
+          //        Thanks IE/Edge, I hate you both.
+          new RegExp('^(?:|[\\S\\s]*?\\s)(' + name + ')\\s*=\\s*(\'|")', 'i'), '$1');
           var value = attributes[realName] || // the following ignore is covered by browsers
           // while basicHTML is already case-sensitive
 
@@ -1234,12 +1256,19 @@ var HyperHTMLElement = (function (exports) {
 
     length = remove.length;
     i = 0;
+    /* istanbul ignore next */
+
+    var cleanValue = 0 < length && UID_IE && !('ownerSVGElement' in node);
 
     while (i < length) {
       // Edge HTML bug #16878726
-      var attr = remove[i++];
-      if (/^id$/i.test(attr.name)) node.removeAttribute(attr.name); // standard browsers would work just fine here
-      else node.removeAttributeNode(attr);
+      var attr = remove[i++]; // IE/Edge bug lighterhtml#63 - clean the value or it'll persist
+
+      /* istanbul ignore next */
+
+      if (cleanValue) attr.value = ''; // IE/Edge bug lighterhtml#64 - don't use removeAttributeNode
+
+      node.removeAttribute(attr.name);
     } // This is a very specific Firefox/Safari issue
     // but since it should be a not so common pattern,
     // it's probably worth patching regardless.
@@ -1300,7 +1329,7 @@ var HyperHTMLElement = (function (exports) {
   var referenced = new WeakMap$1();
 
   function createInfo(options, template) {
-    var markup = sanitize(template);
+    var markup = (options.convert || sanitize)(template);
     var transform = options.transform;
     if (transform) markup = transform(markup);
     var content = createContent(markup, options.type);
