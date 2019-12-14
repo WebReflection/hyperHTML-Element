@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/document-register-element/1.9.1/document-register-element.js"></script>
+    <script>document.write(
+        '<script src="../' + (location.search.toLocaleLowerCase() === '?es5' ? 'es5' : 'index') + '.js?_=' +
+        Math.random() + '"><' + '/script>');</script>
+    <script>document.write(
+        '<script src="' + (location.search.toLocaleLowerCase() === '?es5' ? 'test.es5' : 'test') + '.js?_=' +
+        Math.random() + '"><' + '/script>');</script>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/javascript">
+
+  class Base extends HyperHTMLElement {
+    base() {
+      return 'base';
+    }
+  }
+
+  class Base1 extends Base {
+    base1() {}
+  }
+
+  class Base2 extends Base1 {
+    base2() {}
+  }
+
+  class Base3 extends Base2 {
+    base3() {}
+    base() {
+      return 'base3';
+    }
+  }
+
+  class MyButtonOK extends HyperHTMLElement {
+    created() {
+      console.assert(typeof this.setState === 'function', 'setState is not set.');
+    }
+  }
+
+  class MyButtonErr extends Base3 {
+    created() {
+      console.assert(typeof this.setState === 'function', 'setState is not set.');
+      console.assert(typeof this.base3 === 'function', 'base3 is not set.');
+      console.assert(typeof this.base2 === 'function', 'base2 is not set.');
+      console.assert(typeof this.base1 === 'function', 'base1 is not set.');
+      console.assert(typeof this.base === 'function', 'base is not set.');
+      console.assert(this.base() === 'base3', 'base function was not overriden');
+    }
+  }
+
+  class StandaloneOk extends Base3 {
+    created() {
+      console.assert(typeof this.setState === 'function', 'setState is not set.');
+      console.assert(typeof this.base3 === 'function', 'base3 is not set.');
+      console.assert(typeof this.base2 === 'function', 'base2 is not set.');
+      console.assert(typeof this.base1 === 'function', 'base1 is not set.');
+      console.assert(typeof this.base === 'function', 'base is not set.');
+      console.assert(this.base() === 'base3', 'base function was not overriden');
+    }
+  }
+
+  MyButtonOK.define('my-button', {extends: 'button'});
+  MyButtonErr.define('my-button-sad', {extends: 'button'});
+  StandaloneOk.define('standalone-ok');
+
+  HyperHTMLElement.bind(document.getElementById('root'))`
+    <button is="my-button">Button</button>
+    <button is="my-button-sad">Button</button>
+    <standalone-ok>Button</standalone-ok>
+    `;
+</script>
+</body>
+</html>
