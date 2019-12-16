@@ -2391,15 +2391,35 @@ var HyperHTMLElement = (function (exports) {
             return Intermediate;
           }(Native);
 
-          var Super = getPrototypeOf(Class);
-          ownKeys(Super).filter(function (key) {
-            return ['length', 'name', 'arguments', 'caller', 'prototype'].indexOf(key) < 0;
-          }).forEach(function (key) {
-            return defineProperty(Intermediate, key, getOwnPropertyDescriptor(Super, key));
-          });
-          ownKeys(Super.prototype).forEach(function (key) {
-            return defineProperty(Intermediate.prototype, key, getOwnPropertyDescriptor(Super.prototype, key));
-          });
+          var ckeys = ['length', 'name', 'arguments', 'caller', 'prototype'];
+          var pkeys = [];
+          var Super = null;
+          var BaseClass = Class;
+
+          while (Super = getPrototypeOf(BaseClass)) {
+            [{
+              target: Intermediate,
+              base: Super,
+              keys: ckeys
+            }, {
+              target: Intermediate.prototype,
+              base: Super.prototype,
+              keys: pkeys
+            }].forEach(function (_ref) {
+              var target = _ref.target,
+                  base = _ref.base,
+                  keys = _ref.keys;
+              ownKeys(base).filter(function (key) {
+                return keys.indexOf(key) < 0;
+              }).forEach(function (key) {
+                keys.push(key);
+                defineProperty(target, key, getOwnPropertyDescriptor(base, key));
+              });
+            });
+            BaseClass = Super;
+            if (Super === HyperHTMLElement) break;
+          }
+
           setPrototypeOf(Class, Intermediate);
           setPrototypeOf(proto, Intermediate.prototype);
           customElements.define(name, Class, options);

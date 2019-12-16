@@ -202,24 +202,32 @@ class HyperHTMLElement extends HTMLElement {
     if (options && options.extends) {
       const Native = document.createElement(options.extends).constructor;
       const Intermediate = class extends Native {};
-      const Super = getPrototypeOf(Class);
-      ownKeys(Super)
-        .filter(key => [
-          'length', 'name', 'arguments', 'caller', 'prototype'
-        ].indexOf(key) < 0)
-        .forEach(key => defineProperty(
-          Intermediate,
-          key,
-          getOwnPropertyDescriptor(Super, key)
-        )
-      );
-      ownKeys(Super.prototype)
-        .forEach(key => defineProperty(
-          Intermediate.prototype,
-          key,
-          getOwnPropertyDescriptor(Super.prototype, key)
-        )
-      );
+      const ckeys = ['length', 'name', 'arguments', 'caller', 'prototype'];
+      const pkeys = [];
+      let Super = null;
+      let BaseClass = Class;
+      while (Super = getPrototypeOf(BaseClass)) {
+        [
+          {target: Intermediate, base: Super, keys: ckeys},
+          {target: Intermediate.prototype, base: Super.prototype, keys: pkeys}
+        ]
+        .forEach(({target, base, keys}) => {
+          ownKeys(base)
+            .filter(key => keys.indexOf(key) < 0)
+            .forEach((key) => {
+              keys.push(key);
+              defineProperty(
+                target,
+                key,
+                getOwnPropertyDescriptor(base, key),
+              );
+            });
+        });
+
+        BaseClass = Super;
+        if (Super === HyperHTMLElement)
+          break;
+      }
       setPrototypeOf(Class, Intermediate);
       setPrototypeOf(proto, Intermediate.prototype);
       customElements.define(name, Class, options);

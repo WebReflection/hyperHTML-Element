@@ -1,5 +1,6 @@
-coverage/*
-node_modules/*
+.nyc_output/
+coverage/
+node_modules/
 test/*
 .babelrc
 .gitignore
@@ -9,4 +10,3 @@ esm.config.js
 package-lock.json
 test.js
 typescript.md
-
