@@ -2065,7 +2065,7 @@ var HyperHTMLElement = (function (exports) {
     return wire[id] || (wire[id] = content(type));
   };
 
-  // A document fragment loses its nodes 
+  // A document fragment loses its nodes
   // as soon as it is appended into another node.
   // This has the undesired effect of losing wired content
   // on a second render call, because (by then) the fragment would be empty:
@@ -2372,24 +2372,30 @@ var HyperHTMLElement = (function (exports) {
       if (options && options.extends) {
         const Native = document.createElement(options.extends).constructor;
         const Intermediate = class extends Native {};
-        const Super = getPrototypeOf(Class);
-        ownKeys(Super)
-          .filter(key => [
-            'length', 'name', 'arguments', 'caller', 'prototype'
-          ].indexOf(key) < 0)
-          .forEach(key => defineProperty(
-            Intermediate,
-            key,
-            getOwnPropertyDescriptor(Super, key)
-          )
-        );
-        ownKeys(Super.prototype)
-          .forEach(key => defineProperty(
-            Intermediate.prototype,
-            key,
-            getOwnPropertyDescriptor(Super.prototype, key)
-          )
-        );
+        let Super, BaseClass = Class;
+        const keys = ['length', 'name', 'arguments', 'caller', 'prototype'];
+        while (Super = getPrototypeOf(BaseClass)) {
+          [
+            {target: Intermediate, base: Super},
+            {target: Intermediate.prototype, base: Super.prototype}
+          ].forEach(({target, base}) => {
+              ownKeys(base)
+                .filter(key => keys.indexOf(key) < 0)
+                .forEach((key) => {
+                  keys.push(key);
+                  defineProperty(
+                    target,
+                    key,
+                    getOwnPropertyDescriptor(base, key),
+                  );
+                });
+            });
+
+          BaseClass = Super;
+          if (Super === HyperHTMLElement) {
+            break;
+          }
+        }
         setPrototypeOf(Class, Intermediate);
         setPrototypeOf(proto, Intermediate.prototype);
         customElements.define(name, Class, options);
