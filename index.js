@@ -60,50 +60,6 @@ var HyperHTMLElement = (function (exports) {
   }
   var WeakSet$1 = self$1.WeakSet;
 
-  /*! (c) Andrea Giammarchi - ISC */
-  var self$2 = null || /* istanbul ignore next */ {};
-  try { self$2.Map = Map; }
-  catch (Map) {
-    self$2.Map = function Map() {
-      var i = 0;
-      var k = [];
-      var v = [];
-      return {
-        delete: function (key) {
-          var had = contains(key);
-          if (had) {
-            k.splice(i, 1);
-            v.splice(i, 1);
-          }
-          return had;
-        },
-        forEach: function forEach(callback, context) {
-          k.forEach(
-            function (key, i)  {
-              callback.call(context, v[i], key, this);
-            },
-            this
-          );
-        },
-        get: function get(key) {
-          return contains(key) ? v[i] : void 0;
-        },
-        has: function has(key) {
-          return contains(key);
-        },
-        set: function set(key, value) {
-          v[contains(key) ? i : (k.push(key) - 1)] = value;
-          return this;
-        }
-      };
-      function contains(v) {
-        i = k.indexOf(v);
-        return -1 < i;
-      }
-    };
-  }
-  var Map$1 = self$2.Map;
-
   const {indexOf: iOF} = [];
   const append = (get, parent, children, start, end, before) => {
     const isSelect = 'selectedIndex' in parent;
@@ -182,9 +138,9 @@ var HyperHTMLElement = (function (exports) {
                   get(list[i - 1], -0).nextSibling :
                   before);
 
-  const remove = (get, parent, children, start, end) => {
+  const remove = (get, children, start, end) => {
     while (start < end)
-      removeChild(get(children[start++], -1), parent);
+      drop(get(children[start++], -1));
   };
 
   // - - - - - - - - - - - - - - - - - - -
@@ -217,13 +173,12 @@ var HyperHTMLElement = (function (exports) {
     for (let i = 1; i < minLen; i++)
       tresh[i] = currentEnd;
 
-    const keymap = new Map$1;
-    for (let i = currentStart; i < currentEnd; i++)
-      keymap.set(currentNodes[i], i);
+    const nodes = currentNodes.slice(currentStart, currentEnd);
 
     for (let i = futureStart; i < futureEnd; i++) {
-      const idxInOld = keymap.get(futureNodes[i]);
-      if (idxInOld != null) {
+      const index = nodes.indexOf(futureNodes[i]);
+      if (-1 < index) {
+        const idxInOld = index + currentStart;
         k = findK(tresh, minLen, idxInOld);
         /* istanbul ignore else */
         if (-1 < k) {
@@ -364,7 +319,7 @@ var HyperHTMLElement = (function (exports) {
     currentLength,
     before
   ) => {
-    const live = new Map$1;
+    const live = [];
     const length = diff.length;
     let currentIndex = currentStart;
     let i = 0;
@@ -376,7 +331,7 @@ var HyperHTMLElement = (function (exports) {
           break;
         case INSERTION:
           // TODO: bulk appends for sequential nodes
-          live.set(futureNodes[futureStart], 1);
+          live.push(futureNodes[futureStart]);
           append(
             get,
             parentNode,
@@ -401,12 +356,11 @@ var HyperHTMLElement = (function (exports) {
           break;
         case DELETION:
           // TODO: bulk removes for sequential nodes
-          if (live.has(currentNodes[currentStart]))
+          if (-1 < live.indexOf(currentNodes[currentStart]))
             currentStart++;
           else
             remove(
               get,
-              parentNode,
               currentNodes,
               currentStart++,
               currentStart
@@ -475,22 +429,14 @@ var HyperHTMLElement = (function (exports) {
     );
   };
 
-  let removeChild = (child, parentNode) => {
-    /* istanbul ignore if */
-    if ('remove' in child) {
-      removeChild = child => {
-        child.remove();
-      };
-    }
-    else {
-      removeChild = (child, parentNode) => {
-        /* istanbul ignore else */
-        if (child.parentNode === parentNode)
-          parentNode.removeChild(child);
-      };
-    }
-    removeChild(child, parentNode);
-  };
+  const drop = node => (node.remove || dropChild).call(node);
+
+  function dropChild() {
+    const {parentNode} = this;
+    /* istanbul ignore else */
+    if (parentNode)
+      parentNode.removeChild(this);
+  }
 
   /*! (c) 2018 Andrea Giammarchi (ISC) */
 
@@ -561,7 +507,6 @@ var HyperHTMLElement = (function (exports) {
     if (futureSame && currentStart < currentEnd) {
       remove(
         get,
-        parentNode,
         currentNodes,
         currentStart,
         currentEnd
@@ -620,14 +565,12 @@ var HyperHTMLElement = (function (exports) {
       if (-1 < i) {
         remove(
           get,
-          parentNode,
           currentNodes,
           currentStart,
           i
         );
         remove(
           get,
-          parentNode,
           currentNodes,
           i + futureChanges,
           currentEnd
@@ -650,7 +593,6 @@ var HyperHTMLElement = (function (exports) {
       );
       remove(
         get,
-        parentNode,
         currentNodes,
         currentStart,
         currentEnd
@@ -709,8 +651,8 @@ var HyperHTMLElement = (function (exports) {
   };
 
   /*! (c) Andrea Giammarchi - ISC */
-  var self$3 = null || /* istanbul ignore next */ {};
-  self$3.CustomEvent = typeof CustomEvent === 'function' ?
+  var self$2 = null || /* istanbul ignore next */ {};
+  self$2.CustomEvent = typeof CustomEvent === 'function' ?
     CustomEvent :
     (function (__p__) {
       CustomEvent[__p__] = new CustomEvent('').constructor[__p__];
@@ -722,7 +664,51 @@ var HyperHTMLElement = (function (exports) {
         return e;
       }
     }('prototype'));
-  var CustomEvent$1 = self$3.CustomEvent;
+  var CustomEvent$1 = self$2.CustomEvent;
+
+  /*! (c) Andrea Giammarchi - ISC */
+  var self$3 = null || /* istanbul ignore next */ {};
+  try { self$3.Map = Map; }
+  catch (Map) {
+    self$3.Map = function Map() {
+      var i = 0;
+      var k = [];
+      var v = [];
+      return {
+        delete: function (key) {
+          var had = contains(key);
+          if (had) {
+            k.splice(i, 1);
+            v.splice(i, 1);
+          }
+          return had;
+        },
+        forEach: function forEach(callback, context) {
+          k.forEach(
+            function (key, i)  {
+              callback.call(context, v[i], key, this);
+            },
+            this
+          );
+        },
+        get: function get(key) {
+          return contains(key) ? v[i] : void 0;
+        },
+        has: function has(key) {
+          return contains(key);
+        },
+        set: function set(key, value) {
+          v[contains(key) ? i : (k.push(key) - 1)] = value;
+          return this;
+        }
+      };
+      function contains(v) {
+        i = k.indexOf(v);
+        return -1 < i;
+      }
+    };
+  }
+  var Map$1 = self$3.Map;
 
   // hyperHTML.Component is a very basic class
   // able to create Custom Elements like components
@@ -1197,6 +1183,19 @@ var HyperHTMLElement = (function (exports) {
     return VOID_ELEMENTS.test($1) ? $0 : ('<' + $1 + $2 + '></' + $1 + '>');
   }
 
+  /* istanbul ignore next */
+  var normalizeAttributes = UID_IE ?
+    function (attributes, parts) {
+      var html = parts.join(' ');
+      return parts.slice.call(attributes, 0).sort(function (left, right) {
+        return html.indexOf(left.name) <= html.indexOf(right.name) ? -1 : 1;
+      });
+    } :
+    function (attributes, parts) {
+      return parts.slice.call(attributes, 0);
+    }
+  ;
+
   function find(node, path) {
     var length = path.length;
     var i = 0;
@@ -1261,10 +1260,10 @@ var HyperHTMLElement = (function (exports) {
   }
 
   function parseAttributes(node, holes, parts, path) {
-    var cache = new Map$1;
     var attributes = node.attributes;
+    var cache = [];
     var remove = [];
-    var array = remove.slice.call(attributes, 0);
+    var array = normalizeAttributes(attributes, parts);
     var length = array.length;
     var i = 0;
     while (i < length) {
@@ -1276,18 +1275,13 @@ var HyperHTMLElement = (function (exports) {
         // the following ignore is covered by IE
         // and the IE9 double viewBox test
         /* istanbul ignore else */
-        if (!cache.has(name)) {
+        if (cache.indexOf(name) < 0) {
+          cache.push(name);
           var realName = parts.shift().replace(
             direct ?
               /^(?:|[\S\s]*?\s)(\S+?)\s*=\s*('|")?$/ :
-              // TODO: while working on yet another IE/Edge bug I've realized
-              //        the current not direct logic easily breaks there
-              //        because the `name` might not be the real needed one.
-              //        Use a better RegExp to find last attribute instead
-              //        of trusting `name` is what we are looking for.
-              //        Thanks IE/Edge, I hate you both.
               new RegExp(
-                '^(?:|[\\S\\s]*?\\s)(' + name + ')\\s*=\\s*(\'|")',
+                '^(?:|[\\S\\s]*?\\s)(' + name + ')\\s*=\\s*(\'|")[\\S\\s]*',
                 'i'
               ),
               '$1'
@@ -1297,7 +1291,6 @@ var HyperHTMLElement = (function (exports) {
                         // while basicHTML is already case-sensitive
                         /* istanbul ignore next */
                         attributes[realName.toLowerCase()];
-          cache.set(name, value);
           if (direct)
             holes.push(Attr(value, path, realName, null));
           else {
@@ -1378,7 +1371,6 @@ var HyperHTMLElement = (function (exports) {
   // globals
 
   var parsed = new WeakMap$1;
-  var referenced = new WeakMap$1;
 
   function createInfo(options, template) {
     var markup = (options.convert || sanitize)(template);
@@ -1455,23 +1447,17 @@ var HyperHTMLElement = (function (exports) {
 
   function createDetails(options, template) {
     var info = parsed.get(template) || createInfo(options, template);
-    var content = importNode.call(document, info.content, true);
-    var details = {
-      content: content,
-      template: template,
-      updates: info.updates(content)
-    };
-    referenced.set(options, details);
-    return details;
+    return info.updates(importNode.call(document, info.content, true));
   }
 
+  var empty = [];
   function domtagger(options) {
+    var previous = empty;
+    var updates = cleanContent;
     return function (template) {
-      var details = referenced.get(options);
-      if (details == null || details.template !== template)
-        details = createDetails(options, template);
-      details.updates.apply(null, arguments);
-      return details.content;
+      if (previous !== template)
+        updates = createDetails(options, (previous = template));
+      return updates.apply(null, arguments);
     };
   }
 
@@ -2065,7 +2051,7 @@ var HyperHTMLElement = (function (exports) {
     return wire[id] || (wire[id] = content(type));
   };
 
-  // A document fragment loses its nodes
+  // A document fragment loses its nodes 
   // as soon as it is appended into another node.
   // This has the undesired effect of losing wired content
   // on a second render call, because (by then) the fragment would be empty:
@@ -2372,30 +2358,24 @@ var HyperHTMLElement = (function (exports) {
       if (options && options.extends) {
         const Native = document.createElement(options.extends).constructor;
         const Intermediate = class extends Native {};
-        let Super, BaseClass = Class;
-        const keys = ['length', 'name', 'arguments', 'caller', 'prototype'];
-        while (Super = getPrototypeOf(BaseClass)) {
-          [
-            {target: Intermediate, base: Super},
-            {target: Intermediate.prototype, base: Super.prototype}
-          ].forEach(({target, base}) => {
-              ownKeys(base)
-                .filter(key => keys.indexOf(key) < 0)
-                .forEach((key) => {
-                  keys.push(key);
-                  defineProperty(
-                    target,
-                    key,
-                    getOwnPropertyDescriptor(base, key),
-                  );
-                });
-            });
-
-          BaseClass = Super;
-          if (Super === HyperHTMLElement) {
-            break;
-          }
-        }
+        const Super = getPrototypeOf(Class);
+        ownKeys(Super)
+          .filter(key => [
+            'length', 'name', 'arguments', 'caller', 'prototype'
+          ].indexOf(key) < 0)
+          .forEach(key => defineProperty(
+            Intermediate,
+            key,
+            getOwnPropertyDescriptor(Super, key)
+          )
+        );
+        ownKeys(Super.prototype)
+          .forEach(key => defineProperty(
+            Intermediate.prototype,
+            key,
+            getOwnPropertyDescriptor(Super.prototype, key)
+          )
+        );
         setPrototypeOf(Class, Intermediate);
         setPrototypeOf(proto, Intermediate.prototype);
         customElements.define(name, Class, options);

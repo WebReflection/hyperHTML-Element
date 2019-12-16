@@ -245,55 +245,6 @@ var HyperHTMLElement = (function (exports) {
 
   var WeakSet$1 = self$1.WeakSet;
 
-  /*! (c) Andrea Giammarchi - ISC */
-  var self$2 = null ||
-  /* istanbul ignore next */
-  {};
-
-  try {
-    self$2.Map = Map;
-  } catch (Map) {
-    self$2.Map = function Map() {
-      var i = 0;
-      var k = [];
-      var v = [];
-      return {
-        "delete": function _delete(key) {
-          var had = contains(key);
-
-          if (had) {
-            k.splice(i, 1);
-            v.splice(i, 1);
-          }
-
-          return had;
-        },
-        forEach: function forEach(callback, context) {
-          k.forEach(function (key, i) {
-            callback.call(context, v[i], key, this);
-          }, this);
-        },
-        get: function get(key) {
-          return contains(key) ? v[i] : void 0;
-        },
-        has: function has(key) {
-          return contains(key);
-        },
-        set: function set(key, value) {
-          v[contains(key) ? i : k.push(key) - 1] = value;
-          return this;
-        }
-      };
-
-      function contains(v) {
-        i = k.indexOf(v);
-        return -1 < i;
-      }
-    };
-  }
-
-  var Map$1 = self$2.Map;
-
   var iOF = [].indexOf;
   var append = function append(get, parent, children, start, end, before) {
     var isSelect = 'selectedIndex' in parent;
@@ -349,9 +300,9 @@ var HyperHTMLElement = (function (exports) {
   var next = function next(get, list, i, length, before) {
     return i < length ? get(list[i], 0) : 0 < i ? get(list[i - 1], -0).nextSibling : before;
   };
-  var remove = function remove(get, parent, children, start, end) {
+  var remove = function remove(get, children, start, end) {
     while (start < end) {
-      _removeChild(get(children[start++], -1), parent);
+      drop(get(children[start++], -1));
     }
   }; // - - - - - - - - - - - - - - - - - - -
   // diff related constants and utilities
@@ -375,23 +326,20 @@ var HyperHTMLElement = (function (exports) {
       tresh[i] = currentEnd;
     }
 
-    var keymap = new Map$1();
+    var nodes = currentNodes.slice(currentStart, currentEnd);
 
-    for (var _i = currentStart; _i < currentEnd; _i++) {
-      keymap.set(currentNodes[_i], _i);
-    }
+    for (var _i = futureStart; _i < futureEnd; _i++) {
+      var index = nodes.indexOf(futureNodes[_i]);
 
-    for (var _i2 = futureStart; _i2 < futureEnd; _i2++) {
-      var idxInOld = keymap.get(futureNodes[_i2]);
-
-      if (idxInOld != null) {
+      if (-1 < index) {
+        var idxInOld = index + currentStart;
         k = findK(tresh, minLen, idxInOld);
         /* istanbul ignore else */
 
         if (-1 < k) {
           tresh[k] = idxInOld;
           link[k] = {
-            newi: _i2,
+            newi: _i,
             oldi: idxInOld,
             prev: link[k - 1]
           };
@@ -516,7 +464,7 @@ var HyperHTMLElement = (function (exports) {
   };
 
   var applyDiff = function applyDiff(diff, get, parentNode, futureNodes, futureStart, currentNodes, currentStart, currentLength, before) {
-    var live = new Map$1();
+    var live = [];
     var length = diff.length;
     var currentIndex = currentStart;
     var i = 0;
@@ -530,7 +478,7 @@ var HyperHTMLElement = (function (exports) {
 
         case INSERTION:
           // TODO: bulk appends for sequential nodes
-          live.set(futureNodes[futureStart], 1);
+          live.push(futureNodes[futureStart]);
           append(get, parentNode, futureNodes, futureStart++, futureStart, currentIndex < currentLength ? get(currentNodes[currentIndex], 0) : before);
           break;
 
@@ -550,7 +498,7 @@ var HyperHTMLElement = (function (exports) {
 
         case DELETION:
           // TODO: bulk removes for sequential nodes
-          if (live.has(currentNodes[currentStart])) currentStart++;else remove(get, parentNode, currentNodes, currentStart++, currentStart);
+          if (-1 < live.indexOf(currentNodes[currentStart])) currentStart++;else remove(get, currentNodes, currentStart++, currentStart);
           break;
       }
     }
@@ -572,21 +520,16 @@ var HyperHTMLElement = (function (exports) {
     applyDiff(OND(futureNodes, futureStart, futureChanges, currentNodes, currentStart, currentChanges, compare) || HS(futureNodes, futureStart, futureEnd, futureChanges, currentNodes, currentStart, currentEnd, currentChanges), get, parentNode, futureNodes, futureStart, currentNodes, currentStart, currentLength, before);
   };
 
-  var _removeChild = function removeChild(child, parentNode) {
-    /* istanbul ignore if */
-    if ('remove' in child) {
-      _removeChild = function removeChild(child) {
-        child.remove();
-      };
-    } else {
-      _removeChild = function removeChild(child, parentNode) {
-        /* istanbul ignore else */
-        if (child.parentNode === parentNode) parentNode.removeChild(child);
-      };
-    }
-
-    _removeChild(child, parentNode);
+  var drop = function drop(node) {
+    return (node.remove || dropChild).call(node);
   };
+
+  function dropChild() {
+    var parentNode = this.parentNode;
+    /* istanbul ignore else */
+
+    if (parentNode) parentNode.removeChild(this);
+  }
 
   /*! (c) 2018 Andrea Giammarchi (ISC) */
 
@@ -631,7 +574,7 @@ var HyperHTMLElement = (function (exports) {
 
 
     if (futureSame && currentStart < currentEnd) {
-      remove(get, parentNode, currentNodes, currentStart, currentEnd);
+      remove(get, currentNodes, currentStart, currentEnd);
       return futureNodes;
     }
 
@@ -653,8 +596,8 @@ var HyperHTMLElement = (function (exports) {
         i = indexOf(currentNodes, currentStart, currentEnd, futureNodes, futureStart, futureEnd, compare); // outer diff
 
         if (-1 < i) {
-          remove(get, parentNode, currentNodes, currentStart, i);
-          remove(get, parentNode, currentNodes, i + futureChanges, currentEnd);
+          remove(get, currentNodes, currentStart, i);
+          remove(get, currentNodes, i + futureChanges, currentEnd);
           return futureNodes;
         }
       } // common case with one replacement for many nodes
@@ -665,7 +608,7 @@ var HyperHTMLElement = (function (exports) {
 
     if (currentChanges < 2 || futureChanges < 2) {
       append(get, parentNode, futureNodes, futureStart, futureEnd, get(currentNodes[currentStart], 0));
-      remove(get, parentNode, currentNodes, currentStart, currentEnd);
+      remove(get, currentNodes, currentStart, currentEnd);
       return futureNodes;
     } // the half match diff part has been skipped in petit-dom
     // https://github.com/yelouafi/petit-dom/blob/bd6f5c919b5ae5297be01612c524c40be45f14a7/src/vdom.js#L391-L397
@@ -687,10 +630,10 @@ var HyperHTMLElement = (function (exports) {
   };
 
   /*! (c) Andrea Giammarchi - ISC */
-  var self$3 = null ||
+  var self$2 = null ||
   /* istanbul ignore next */
   {};
-  self$3.CustomEvent = typeof CustomEvent === 'function' ? CustomEvent : function (__p__) {
+  self$2.CustomEvent = typeof CustomEvent === 'function' ? CustomEvent : function (__p__) {
     CustomEvent[__p__] = new CustomEvent('').constructor[__p__];
     return CustomEvent;
 
@@ -701,7 +644,56 @@ var HyperHTMLElement = (function (exports) {
       return e;
     }
   }('prototype');
-  var CustomEvent$1 = self$3.CustomEvent;
+  var CustomEvent$1 = self$2.CustomEvent;
+
+  /*! (c) Andrea Giammarchi - ISC */
+  var self$3 = null ||
+  /* istanbul ignore next */
+  {};
+
+  try {
+    self$3.Map = Map;
+  } catch (Map) {
+    self$3.Map = function Map() {
+      var i = 0;
+      var k = [];
+      var v = [];
+      return {
+        "delete": function _delete(key) {
+          var had = contains(key);
+
+          if (had) {
+            k.splice(i, 1);
+            v.splice(i, 1);
+          }
+
+          return had;
+        },
+        forEach: function forEach(callback, context) {
+          k.forEach(function (key, i) {
+            callback.call(context, v[i], key, this);
+          }, this);
+        },
+        get: function get(key) {
+          return contains(key) ? v[i] : void 0;
+        },
+        has: function has(key) {
+          return contains(key);
+        },
+        set: function set(key, value) {
+          v[contains(key) ? i : k.push(key) - 1] = value;
+          return this;
+        }
+      };
+
+      function contains(v) {
+        i = k.indexOf(v);
+        return -1 < i;
+      }
+    };
+  }
+
+  var Map$1 = self$3.Map;
 
   // able to create Custom Elements like components
   // including the ability to listen to connect/disconnect
@@ -1137,6 +1129,17 @@ var HyperHTMLElement = (function (exports) {
     return VOID_ELEMENTS.test($1) ? $0 : '<' + $1 + $2 + '></' + $1 + '>';
   }
 
+  /* istanbul ignore next */
+
+  var normalizeAttributes = UID_IE ? function (attributes, parts) {
+    var html = parts.join(' ');
+    return parts.slice.call(attributes, 0).sort(function (left, right) {
+      return html.indexOf(left.name) <= html.indexOf(right.name) ? -1 : 1;
+    });
+  } : function (attributes, parts) {
+    return parts.slice.call(attributes, 0);
+  };
+
   function find(node, path) {
     var length = path.length;
     var i = 0;
@@ -1207,10 +1210,10 @@ var HyperHTMLElement = (function (exports) {
   }
 
   function parseAttributes(node, holes, parts, path) {
-    var cache = new Map$1();
     var attributes = node.attributes;
+    var cache = [];
     var remove = [];
-    var array = remove.slice.call(attributes, 0);
+    var array = normalizeAttributes(attributes, parts);
     var length = array.length;
     var i = 0;
 
@@ -1225,20 +1228,14 @@ var HyperHTMLElement = (function (exports) {
 
         /* istanbul ignore else */
 
-        if (!cache.has(name)) {
-          var realName = parts.shift().replace(direct ? /^(?:|[\S\s]*?\s)(\S+?)\s*=\s*('|")?$/ : // TODO: while working on yet another IE/Edge bug I've realized
-          //        the current not direct logic easily breaks there
-          //        because the `name` might not be the real needed one.
-          //        Use a better RegExp to find last attribute instead
-          //        of trusting `name` is what we are looking for.
-          //        Thanks IE/Edge, I hate you both.
-          new RegExp('^(?:|[\\S\\s]*?\\s)(' + name + ')\\s*=\\s*(\'|")', 'i'), '$1');
+        if (cache.indexOf(name) < 0) {
+          cache.push(name);
+          var realName = parts.shift().replace(direct ? /^(?:|[\S\s]*?\s)(\S+?)\s*=\s*('|")?$/ : new RegExp('^(?:|[\\S\\s]*?\\s)(' + name + ')\\s*=\\s*(\'|")[\\S\\s]*', 'i'), '$1');
           var value = attributes[realName] || // the following ignore is covered by browsers
           // while basicHTML is already case-sensitive
 
           /* istanbul ignore next */
           attributes[realName.toLowerCase()];
-          cache.set(name, value);
           if (direct) holes.push(Attr(value, path, realName, null));else {
             var skip = sparse.length - 2;
 
@@ -1326,7 +1323,6 @@ var HyperHTMLElement = (function (exports) {
 
   // globals
   var parsed = new WeakMap$1();
-  var referenced = new WeakMap$1();
 
   function createInfo(options, template) {
     var markup = (options.convert || sanitize)(template);
@@ -1421,22 +1417,17 @@ var HyperHTMLElement = (function (exports) {
 
   function createDetails(options, template) {
     var info = parsed.get(template) || createInfo(options, template);
-    var content = importNode.call(document, info.content, true);
-    var details = {
-      content: content,
-      template: template,
-      updates: info.updates(content)
-    };
-    referenced.set(options, details);
-    return details;
+    return info.updates(importNode.call(document, info.content, true));
   }
 
+  var empty = [];
+
   function domtagger(options) {
+    var previous = empty;
+    var updates = cleanContent;
     return function (template) {
-      var details = referenced.get(options);
-      if (details == null || details.template !== template) details = createDetails(options, template);
-      details.updates.apply(null, arguments);
-      return details.content;
+      if (previous !== template) updates = createDetails(options, previous = template);
+      return updates.apply(null, arguments);
     };
   }
 
