@@ -2375,7 +2375,7 @@ var HyperHTMLElement = (function (exports) {
                 defineProperty(
                   target,
                   key,
-                  getOwnPropertyDescriptor(base, key),
+                  getOwnPropertyDescriptor(base, key)
                 );
               });
           });

@@ -219,7 +219,7 @@ class HyperHTMLElement extends HTMLElement {
               defineProperty(
                 target,
                 key,
-                getOwnPropertyDescriptor(base, key),
+                getOwnPropertyDescriptor(base, key)
               );
             });
         });
