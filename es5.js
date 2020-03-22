@@ -2,6 +2,8 @@ var HyperHTMLElement = (function (exports) {
   'use strict';
 
   function _typeof(obj) {
+    "@babel/helpers - typeof";
+
     if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") {
       _typeof = function (obj) {
         return typeof obj;
@@ -68,7 +70,7 @@ var HyperHTMLElement = (function (exports) {
     return _setPrototypeOf(o, p);
   }
 
-  function isNativeReflectConstruct() {
+  function _isNativeReflectConstruct() {
     if (typeof Reflect === "undefined" || !Reflect.construct) return false;
     if (Reflect.construct.sham) return false;
     if (typeof Proxy === "function") return true;
@@ -82,7 +84,7 @@ var HyperHTMLElement = (function (exports) {
   }
 
   function _construct(Parent, args, Class) {
-    if (isNativeReflectConstruct()) {
+    if (_isNativeReflectConstruct()) {
       _construct = Reflect.construct;
     } else {
       _construct = function _construct(Parent, args, Class) {
@@ -150,6 +152,23 @@ var HyperHTMLElement = (function (exports) {
     }
 
     return _assertThisInitialized(self);
+  }
+
+  function _createSuper(Derived) {
+    return function () {
+      var Super = _getPrototypeOf(Derived),
+          result;
+
+      if (_isNativeReflectConstruct()) {
+        var NewTarget = _getPrototypeOf(this).constructor;
+
+        result = Reflect.construct(Super, arguments, NewTarget);
+      } else {
+        result = Super.apply(this, arguments);
+      }
+
+      return _possibleConstructorReturn(this, result);
+    };
   }
 
   /*! (c) Andrea Giammarchi - ISC */
@@ -245,9 +264,11 @@ var HyperHTMLElement = (function (exports) {
 
   var WeakSet$1 = self$1.WeakSet;
 
-  var iOF = [].indexOf;
+  var _ref = [],
+      indexOf = _ref.indexOf;
+
   var append = function append(get, parent, children, start, end, before) {
-    var isSelect = 'selectedIndex' in parent;
+    var isSelect = ('selectedIndex' in parent);
     var noSelection = isSelect;
 
     while (start < end) {
@@ -257,7 +278,7 @@ var HyperHTMLElement = (function (exports) {
       if (isSelect && noSelection && child.selected) {
         noSelection = !noSelection;
         var selectedIndex = parent.selectedIndex;
-        parent.selectedIndex = selectedIndex < 0 ? start : iOF.call(parent.querySelectorAll('option'), child);
+        parent.selectedIndex = selectedIndex < 0 ? start : indexOf.call(parent.querySelectorAll('option'), child);
       }
 
       start++;
@@ -269,7 +290,7 @@ var HyperHTMLElement = (function (exports) {
   var identity = function identity(O) {
     return O;
   };
-  var indexOf = function indexOf(moreNodes, moreStart, moreEnd, lessNodes, lessStart, lessEnd, compare) {
+  var indexOf$1 = function indexOf(moreNodes, moreStart, moreEnd, lessNodes, lessStart, lessEnd, compare) {
     var length = lessEnd - lessStart;
     /* istanbul ignore if */
 
@@ -583,7 +604,7 @@ var HyperHTMLElement = (function (exports) {
     var i = -1; // 2 simple indels: the shortest sequence is a subsequence of the longest
 
     if (currentChanges < futureChanges) {
-      i = indexOf(futureNodes, futureStart, futureEnd, currentNodes, currentStart, currentEnd, compare); // inner diff
+      i = indexOf$1(futureNodes, futureStart, futureEnd, currentNodes, currentStart, currentEnd, compare); // inner diff
 
       if (-1 < i) {
         append(get, parentNode, futureNodes, futureStart, i, get(currentNodes[currentStart], 0));
@@ -593,7 +614,7 @@ var HyperHTMLElement = (function (exports) {
     }
     /* istanbul ignore else */
     else if (futureChanges < currentChanges) {
-        i = indexOf(currentNodes, currentStart, currentEnd, futureNodes, futureStart, futureEnd, compare); // outer diff
+        i = indexOf$1(currentNodes, currentStart, currentEnd, futureNodes, futureStart, futureEnd, compare); // outer diff
 
         if (-1 < i) {
           remove(get, currentNodes, currentStart, i);
@@ -910,7 +931,7 @@ var HyperHTMLElement = (function (exports) {
 
     var FRAGMENT = 'fragment';
     var TEMPLATE = 'template';
-    var HAS_CONTENT = 'content' in create(TEMPLATE);
+    var HAS_CONTENT = ('content' in create(TEMPLATE));
     var createHTML = HAS_CONTENT ? function (html) {
       var template = create(TEMPLATE);
       template.innerHTML = html;
@@ -1056,7 +1077,7 @@ var HyperHTMLElement = (function (exports) {
 
   /*! (c) Andrea Giammarchi - ISC */
   var importNode = function (document, appendChild, cloneNode, createTextNode, importNode) {
-    var _native = importNode in document; // IE 11 has problems with cloning templates:
+    var _native = (importNode in document); // IE 11 has problems with cloning templates:
     // it "forgets" empty childNodes. This feature-detects that.
 
 
@@ -1128,6 +1149,22 @@ var HyperHTMLElement = (function (exports) {
   function fullClosing($0, $1, $2) {
     return VOID_ELEMENTS.test($1) ? $0 : '<' + $1 + $2 + '></' + $1 + '>';
   }
+
+  var umap = (function (_) {
+    return {
+      // About: get: _.get.bind(_)
+      // It looks like WebKit/Safari didn't optimize bind at all,
+      // so that using bind slows it down by 60%.
+      // Firefox and Chrome are just fine in both cases,
+      // so let's use the approach that works fast everywhere 👍
+      get: function get(key) {
+        return _.get(key);
+      },
+      set: function set(key, value) {
+        return _.set(key, value), value;
+      }
+    };
+  });
 
   /* istanbul ignore next */
 
@@ -1322,7 +1359,7 @@ var HyperHTMLElement = (function (exports) {
   }
 
   // globals
-  var parsed = new WeakMap$1();
+  var parsed = umap(new WeakMap$1());
 
   function createInfo(options, template) {
     var markup = (options.convert || sanitize)(template);
@@ -1332,7 +1369,7 @@ var HyperHTMLElement = (function (exports) {
     cleanContent(content);
     var holes = [];
     parse(content, holes, template.slice(0), []);
-    var info = {
+    return {
       content: content,
       updates: function updates(content) {
         var updates = [];
@@ -1411,12 +1448,10 @@ var HyperHTMLElement = (function (exports) {
         };
       }
     };
-    parsed.set(template, info);
-    return info;
   }
 
   function createDetails(options, template) {
-    var info = parsed.get(template) || createInfo(options, template);
+    var info = parsed.get(template) || parsed.set(template, createInfo(options, template));
     return info.updates(importNode.call(document, info.content, true));
   }
 
@@ -1619,6 +1654,18 @@ var HyperHTMLElement = (function (exports) {
 
   var canDiff = function canDiff(value) {
     return 'ELEMENT_NODE' in value;
+  };
+
+  var hyperSetter = function hyperSetter(node, name, svg) {
+    return svg ? function (value) {
+      try {
+        node[name] = value;
+      } catch (nope) {
+        node.setAttribute(name, value);
+      }
+    } : function (value) {
+      node[name] = value;
+    };
   }; // when a Promise is used as interpolation value
   // its result must be parsed once resolved.
   // This callback is in charge of understanding what to do
@@ -1667,81 +1714,82 @@ var HyperHTMLElement = (function (exports) {
     //    so that you can style=${{width: 120}}. In this case, the behavior has been
     //    fully inspired by Preact library and its simplicity.
     attribute: function attribute(node, name, original) {
-      var isSVG = OWNER_SVG_ELEMENT in node;
+      var isSVG = (OWNER_SVG_ELEMENT in node);
       var oldValue; // if the attribute is the style one
       // handle it differently from others
 
-      if (name === 'style') return hyperStyle(node, original, isSVG); // the name is an event one,
-      // add/remove event listeners accordingly
-      else if (/^on/.test(name)) {
-          var type = name.slice(2);
+      if (name === 'style') return hyperStyle(node, original, isSVG); // direct accessors for <input .value=${...}> and friends
+      else if (name.slice(0, 1) === '.') return hyperSetter(node, name.slice(1), isSVG); // the name is an event one,
+        // add/remove event listeners accordingly
+        else if (/^on/.test(name)) {
+            var type = name.slice(2);
 
-          if (type === CONNECTED || type === DISCONNECTED) {
-            observe(node);
-          } else if (name.toLowerCase() in node) {
-            type = type.toLowerCase();
-          }
-
-          return function (newValue) {
-            if (oldValue !== newValue) {
-              if (oldValue) node.removeEventListener(type, oldValue, false);
-              oldValue = newValue;
-              if (newValue) node.addEventListener(type, newValue, false);
+            if (type === CONNECTED || type === DISCONNECTED) {
+              observe(node);
+            } else if (name.toLowerCase() in node) {
+              type = type.toLowerCase();
             }
-          };
-        } // the attribute is special ('value' in input)
-        // and it's not SVG *or* the name is exactly data,
-        // in this case assign the value directly
-        else if (name === 'data' || !isSVG && name in node && !readOnly.test(name)) {
+
             return function (newValue) {
               if (oldValue !== newValue) {
+                if (oldValue) node.removeEventListener(type, oldValue, false);
                 oldValue = newValue;
-
-                if (node[name] !== newValue && newValue == null) {
-                  // cleanup on null to avoid silly IE/Edge bug
-                  node[name] = '';
-                  node.removeAttribute(name);
-                } else node[name] = newValue;
+                if (newValue) node.addEventListener(type, newValue, false);
               }
             };
-          } else if (name in Intent.attributes) {
-            return function (any) {
-              var newValue = Intent.attributes[name](node, any);
-
-              if (oldValue !== newValue) {
-                oldValue = newValue;
-                if (newValue == null) node.removeAttribute(name);else node.setAttribute(name, newValue);
-              }
-            };
-          } // in every other case, use the attribute node as it is
-          // update only the value, set it as node only when/if needed
-          else {
-              var owner = false;
-              var attribute = original.cloneNode(true);
+          } // the attribute is special ('value' in input)
+          // and it's not SVG *or* the name is exactly data,
+          // in this case assign the value directly
+          else if (name === 'data' || !isSVG && name in node && !readOnly.test(name)) {
               return function (newValue) {
                 if (oldValue !== newValue) {
                   oldValue = newValue;
 
-                  if (attribute.value !== newValue) {
-                    if (newValue == null) {
-                      if (owner) {
-                        owner = false;
-                        node.removeAttributeNode(attribute);
-                      }
+                  if (node[name] !== newValue && newValue == null) {
+                    // cleanup on null to avoid silly IE/Edge bug
+                    node[name] = '';
+                    node.removeAttribute(name);
+                  } else node[name] = newValue;
+                }
+              };
+            } else if (name in Intent.attributes) {
+              return function (any) {
+                var newValue = Intent.attributes[name](node, any);
 
-                      attribute.value = newValue;
-                    } else {
-                      attribute.value = newValue;
+                if (oldValue !== newValue) {
+                  oldValue = newValue;
+                  if (newValue == null) node.removeAttribute(name);else node.setAttribute(name, newValue);
+                }
+              };
+            } // in every other case, use the attribute node as it is
+            // update only the value, set it as node only when/if needed
+            else {
+                var owner = false;
+                var attribute = original.cloneNode(true);
+                return function (newValue) {
+                  if (oldValue !== newValue) {
+                    oldValue = newValue;
 
-                      if (!owner) {
-                        owner = true;
-                        node.setAttributeNode(attribute);
+                    if (attribute.value !== newValue) {
+                      if (newValue == null) {
+                        if (owner) {
+                          owner = false;
+                          node.removeAttributeNode(attribute);
+                        }
+
+                        attribute.value = newValue;
+                      } else {
+                        attribute.value = newValue;
+
+                        if (!owner) {
+                          owner = true;
+                          node.setAttributeNode(attribute);
+                        }
                       }
                     }
                   }
-                }
-              };
-            }
+                };
+              }
     },
     // in a hyper(node)`<div>${content}</div>` case
     // everything could happen:
@@ -2132,15 +2180,15 @@ var HyperHTMLElement = (function (exports) {
   var _attachShadow = HTMLElement.prototype.attachShadow;
   var sr = new WeakMap();
 
-  var HyperHTMLElement =
-  /*#__PURE__*/
-  function (_HTMLElement) {
+  var HyperHTMLElement = /*#__PURE__*/function (_HTMLElement) {
     _inherits(HyperHTMLElement, _HTMLElement);
+
+    var _super = _createSuper(HyperHTMLElement);
 
     function HyperHTMLElement() {
       _classCallCheck(this, HyperHTMLElement);
 
-      return _possibleConstructorReturn(this, _getPrototypeOf(HyperHTMLElement).apply(this, arguments));
+      return _super.apply(this, arguments);
     }
 
     _createClass(HyperHTMLElement, [{
@@ -2377,15 +2425,15 @@ var HyperHTMLElement = (function (exports) {
         if (options && options["extends"]) {
           var Native = document.createElement(options["extends"]).constructor;
 
-          var Intermediate =
-          /*#__PURE__*/
-          function (_Native) {
+          var Intermediate = /*#__PURE__*/function (_Native) {
             _inherits(Intermediate, _Native);
+
+            var _super2 = _createSuper(Intermediate);
 
             function Intermediate() {
               _classCallCheck(this, Intermediate);
 
-              return _possibleConstructorReturn(this, _getPrototypeOf(Intermediate).apply(this, arguments));
+              return _super2.apply(this, arguments);
             }
 
             return Intermediate;
@@ -2433,7 +2481,7 @@ var HyperHTMLElement = (function (exports) {
     }]);
 
     return HyperHTMLElement;
-  }(_wrapNativeSuper(HTMLElement));
+  }( /*#__PURE__*/_wrapNativeSuper(HTMLElement));
 
   HyperHTMLElement.Component = Component;
   HyperHTMLElement.bind = bind;

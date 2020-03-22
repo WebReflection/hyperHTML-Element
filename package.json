@@ -96,21 +96,21 @@
     ]
   },
   "devDependencies": {
-    "@babel/cli": "^7.7.7",
-    "@babel/core": "^7.7.7",
-    "@babel/preset-env": "^7.7.7",
+    "@babel/cli": "^7.8.4",
+    "@babel/core": "^7.9.0",
+    "@babel/preset-env": "^7.9.0",
     "ascjs": "^3.1.2",
-    "basichtml": "^2.0.0",
-    "coveralls": "^3.0.9",
+    "basichtml": "^2.2.0",
+    "coveralls": "^3.0.11",
     "npm-dollar": "^2.2.1",
     "nyc": "^15.0.0",
-    "rollup": "^1.28.0",
-    "rollup-plugin-babel": "^4.3.3",
+    "rollup": "^2.1.0",
+    "rollup-plugin-babel": "^4.4.0",
     "rollup-plugin-node-resolve": "^5.2.0",
     "tressa": "^0.3.1",
     "uglify-es": "^3.3.9"
   },
   "dependencies": {
-    "hyperhtml": "^2.31.6"
+    "hyperhtml": "^2.32.2"
   }
 }

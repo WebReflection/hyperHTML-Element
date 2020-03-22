@@ -60,7 +60,8 @@ var HyperHTMLElement = (function (exports) {
   }
   var WeakSet$1 = self$1.WeakSet;
 
-  const {indexOf: iOF} = [];
+  const {indexOf, slice} = [];
+
   const append = (get, parent, children, start, end, before) => {
     const isSelect = 'selectedIndex' in parent;
     let noSelection = isSelect;
@@ -72,7 +73,7 @@ var HyperHTMLElement = (function (exports) {
         let {selectedIndex} = parent;
         parent.selectedIndex = selectedIndex < 0 ?
           start :
-          iOF.call(parent.querySelectorAll('option'), child);
+          indexOf.call(parent.querySelectorAll('option'), child);
       }
       start++;
     }
@@ -82,7 +83,7 @@ var HyperHTMLElement = (function (exports) {
 
   const identity = O => O;
 
-  const indexOf = (
+  const indexOf$1 = (
     moreNodes,
     moreStart,
     moreEnd,
@@ -520,7 +521,7 @@ var HyperHTMLElement = (function (exports) {
 
     // 2 simple indels: the shortest sequence is a subsequence of the longest
     if (currentChanges < futureChanges) {
-      i = indexOf(
+      i = indexOf$1(
         futureNodes,
         futureStart,
         futureEnd,
@@ -552,7 +553,7 @@ var HyperHTMLElement = (function (exports) {
     }
     /* istanbul ignore else */
     else if (futureChanges < currentChanges) {
-      i = indexOf(
+      i = indexOf$1(
         currentNodes,
         currentStart,
         currentEnd,
@@ -1183,6 +1184,16 @@ var HyperHTMLElement = (function (exports) {
     return VOID_ELEMENTS.test($1) ? $0 : ('<' + $1 + $2 + '></' + $1 + '>');
   }
 
+  var umap = _ => ({
+    // About: get: _.get.bind(_)
+    // It looks like WebKit/Safari didn't optimize bind at all,
+    // so that using bind slows it down by 60%.
+    // Firefox and Chrome are just fine in both cases,
+    // so let's use the approach that works fast everywhere 👍
+    get: key => _.get(key),
+    set: (key, value) => (_.set(key, value), value)
+  });
+
   /* istanbul ignore next */
   var normalizeAttributes = UID_IE ?
     function (attributes, parts) {
@@ -1370,7 +1381,7 @@ var HyperHTMLElement = (function (exports) {
 
   // globals
 
-  var parsed = new WeakMap$1;
+  var parsed = umap(new WeakMap$1);
 
   function createInfo(options, template) {
     var markup = (options.convert || sanitize)(template);
@@ -1381,7 +1392,7 @@ var HyperHTMLElement = (function (exports) {
     cleanContent(content);
     var holes = [];
     parse(content, holes, template.slice(0), []);
-    var info = {
+    return {
       content: content,
       updates: function (content) {
         var updates = [];
@@ -1441,12 +1452,10 @@ var HyperHTMLElement = (function (exports) {
         };
       }
     };
-    parsed.set(template, info);
-    return info;
   }
 
   function createDetails(options, template) {
-    var info = parsed.get(template) || createInfo(options, template);
+    var info = parsed.get(template) || parsed.set(template, createInfo(options, template));
     return info.updates(importNode.call(document, info.content, true));
   }
 
@@ -1646,6 +1655,19 @@ var HyperHTMLElement = (function (exports) {
   // returns true if domdiff can handle the value
   const canDiff = value => 'ELEMENT_NODE' in value;
 
+  const hyperSetter = (node, name, svg) => svg ?
+    value => {
+      try {
+        node[name] = value;
+      }
+      catch (nope) {
+        node.setAttribute(name, value);
+      }
+    } :
+    value => {
+      node[name] = value;
+    };
+
   // when a Promise is used as interpolation value
   // its result must be parsed once resolved.
   // This callback is in charge of understanding what to do
@@ -1670,7 +1692,7 @@ var HyperHTMLElement = (function (exports) {
   const readOnly = /^(?:form|list)$/i;
 
   // reused every slice time
-  const slice = [].slice;
+  const slice$1 = [].slice;
 
   // simplifies text node creation
   const text = (node, text) => node.ownerDocument.createTextNode(text);
@@ -1696,6 +1718,9 @@ var HyperHTMLElement = (function (exports) {
       // handle it differently from others
       if (name === 'style')
         return hyperStyle(node, original, isSVG);
+      // direct accessors for <input .value=${...}> and friends
+      else if (name.slice(0, 1) === '.')
+        return hyperSetter(node, name.slice(1), isSVG);
       // the name is an event one,
       // add/remove event listeners accordingly
       else if (/^on/.test(name)) {
@@ -1870,7 +1895,7 @@ var HyperHTMLElement = (function (exports) {
                 node.parentNode,
                 childNodes,
                 value.nodeType === DOCUMENT_FRAGMENT_NODE ?
-                  slice.call(value.childNodes) :
+                  slice$1.call(value.childNodes) :
                   [value],
                 diffOptions
               );
@@ -1886,7 +1911,7 @@ var HyperHTMLElement = (function (exports) {
               childNodes = domdiff(
                 node.parentNode,
                 childNodes,
-                slice.call(
+                slice$1.call(
                   createContent(
                     [].concat(value.html).join(''),
                     nodeType
@@ -1895,7 +1920,7 @@ var HyperHTMLElement = (function (exports) {
                 diffOptions
               );
             } else if ('length' in value) {
-              anyContent(slice.call(value));
+              anyContent(slice$1.call(value));
             } else {
               anyContent(Intent.invoke(value, anyContent));
             }
@@ -1927,7 +1952,7 @@ var HyperHTMLElement = (function (exports) {
             } else if ('html' in value) {
               textContent([].concat(value.html).join(''));
             } else if ('length' in value) {
-              textContent(slice.call(value).join(''));
+              textContent(slice$1.call(value).join(''));
             } else {
               textContent(Intent.invoke(value, textContent));
             }
