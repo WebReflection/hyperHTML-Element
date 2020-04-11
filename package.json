@@ -100,7 +100,7 @@
     "@babel/core": "^7.9.0",
     "@babel/preset-env": "^7.9.0",
     "ascjs": "^3.1.2",
-    "basichtml": "^2.2.0",
+    "basichtml": "^2.2.3",
     "coveralls": "^3.0.11",
     "npm-dollar": "^2.2.1",
     "nyc": "^15.0.0",
