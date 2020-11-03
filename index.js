@@ -2,7 +2,7 @@ var HyperHTMLElement = (function (exports) {
   'use strict';
 
   /*! (c) Andrea Giammarchi - ISC */
-  var self = null || /* istanbul ignore next */ {};
+  var self = {};
   try { self.WeakMap = WeakMap; }
   catch (WeakMap) {
     // this could be better but 90% of the time
@@ -37,7 +37,7 @@ var HyperHTMLElement = (function (exports) {
   var WeakMap$1 = self.WeakMap;
 
   /*! (c) Andrea Giammarchi - ISC */
-  var self$1 = null || /* istanbul ignore next */ {};
+  var self$1 = {};
   try { self$1.WeakSet = WeakSet; }
   catch (WeakSet) {
     (function (id, dP) {
@@ -652,7 +652,7 @@ var HyperHTMLElement = (function (exports) {
   };
 
   /*! (c) Andrea Giammarchi - ISC */
-  var self$2 = null || /* istanbul ignore next */ {};
+  var self$2 = {};
   self$2.CustomEvent = typeof CustomEvent === 'function' ?
     CustomEvent :
     (function (__p__) {
@@ -668,7 +668,7 @@ var HyperHTMLElement = (function (exports) {
   var CustomEvent$1 = self$2.CustomEvent;
 
   /*! (c) Andrea Giammarchi - ISC */
-  var self$3 = null || /* istanbul ignore next */ {};
+  var self$3 = {};
   try { self$3.Map = Map; }
   catch (Map) {
     self$3.Map = function Map() {
@@ -911,8 +911,10 @@ var HyperHTMLElement = (function (exports) {
     }
   };
 
-  var isArray = Array.isArray || (function (toString) {
+  var isArray = Array.isArray || /* istanbul ignore next */ (function (toString) {
+    /* istanbul ignore next */
     var $ = toString.call([]);
+    /* istanbul ignore next */
     return function isArray(object) {
       return toString.call(object) === $;
     };
@@ -1091,6 +1093,7 @@ var HyperHTMLElement = (function (exports) {
     var fragment = document.createDocumentFragment();
     fragment[appendChild](document[createTextNode]('g'));
     fragment[appendChild](document[createTextNode](''));
+    /* istanbul ignore next */
     var content = native ?
       document[importNode](fragment, true) :
       fragment[cloneNode](true);
@@ -1098,6 +1101,7 @@ var HyperHTMLElement = (function (exports) {
       function importNode(node, deep) {
         var clone = node[cloneNode]();
         for (var
+          /* istanbul ignore next */
           childNodes = node.childNodes || [],
           length = childNodes.length,
           i = 0; deep && i < length; i++
@@ -1106,6 +1110,7 @@ var HyperHTMLElement = (function (exports) {
         }
         return clone;
       } :
+      /* istanbul ignore next */
       (native ?
         document[importNode] :
         function (node, deep) {
@@ -1120,7 +1125,7 @@ var HyperHTMLElement = (function (exports) {
     'importNode'
   ));
 
-  var trim = ''.trim || function () {
+  var trim = ''.trim || /* istanbul ignore next */ function () {
     return String(this).replace(/^\s+|\s+/g, '');
   };
 
@@ -2022,6 +2027,15 @@ var HyperHTMLElement = (function (exports) {
       args.push(arguments[i++]);
     return args;
   }
+  /**
+   * best benchmark goes here
+   * https://jsperf.com/tta-bench
+   * I should probably have an @ungap/template-literal-es too
+  export default (...args) => {
+    args[0] = unique(args[0]);
+    return args;
+  };
+   */
 
   // all wires used per each context
   const wires = new WeakMap$1;
@@ -2307,7 +2321,7 @@ var HyperHTMLElement = (function (exports) {
           configurable: true,
           value: function aCC(name, prev, curr) {
             if (this._init$) {
-              checkReady.call(this, created);
+              checkReady.call(this, created, attributes);
               if (this._init$)
                 return this._init$$.push(aCC.bind(this, name, prev, curr));
             }
@@ -2329,7 +2343,7 @@ var HyperHTMLElement = (function (exports) {
           configurable: true,
           value: function cC() {
             if (this._init$) {
-              checkReady.call(this, created);
+              checkReady.call(this, created, attributes);
               if (this._init$)
                 return this._init$$.push(cC.bind(this));
             }
@@ -2532,18 +2546,26 @@ var HyperHTMLElement = (function (exports) {
     document.addEventListener(dom.type, dom, false);
   }
 
-  function checkReady(created) {
-    if (dom.ready() || isReady.call(this, created)) {
+  function checkReady(created, attributes) {
+    if (dom.ready() || isReady.call(this, created, attributes)) {
       if (this._init$) {
-        const list = this._init$$;
-        if (list) delete this._init$$;
-        created.call(defineProperty(this, '_init$', {value: false}));
-        if (list) list.forEach(invoke);
+        const list = this._init$$ || [];
+        delete this._init$$;
+        const self = defineProperty(this, '_init$', {value: false});
+        attributes.forEach(name => {
+          if (self.hasOwnProperty(name)) {
+            const curr = self[name];
+            delete self[name];
+            list.unshift(() => { self[name] = curr; });
+          }
+        });
+        created.call(self);
+        list.forEach(invoke);
       }
     } else {
       if (!this.hasOwnProperty('_init$$'))
         defineProperty(this, '_init$$', {configurable: true, value: []});
-      dom.list.push(checkReady.bind(this, created));
+      dom.list.push(checkReady.bind(this, created, attributes));
     }
   }
 
@@ -2555,15 +2577,17 @@ var HyperHTMLElement = (function (exports) {
     return this === Class.prototype;
   }
 
-  function isReady(created) {
+  function isReady(created, attributes) {
     let el = this;
     do { if (el.nextSibling) return true; }
     while (el = el.parentNode);
-    setTimeout(checkReady.bind(this, created));
+    setTimeout(checkReady.bind(this, created, attributes));
     return false;
   }
 
   exports.default = HyperHTMLElement;
+
+  Object.defineProperty(exports, '__esModule', { value: true });
 
   return exports.default;
 

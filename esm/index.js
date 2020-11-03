@@ -126,7 +126,7 @@ class HyperHTMLElement extends HTMLElement {
         configurable: true,
         value: function aCC(name, prev, curr) {
           if (this._init$) {
-            checkReady.call(this, created);
+            checkReady.call(this, created, attributes);
             if (this._init$)
               return this._init$$.push(aCC.bind(this, name, prev, curr));
           }
@@ -148,7 +148,7 @@ class HyperHTMLElement extends HTMLElement {
         configurable: true,
         value: function cC() {
           if (this._init$) {
-            checkReady.call(this, created);
+            checkReady.call(this, created, attributes);
             if (this._init$)
               return this._init$$.push(cC.bind(this));
           }
@@ -354,18 +354,26 @@ if (!dom.ready()) {
   document.addEventListener(dom.type, dom, false);
 }
 
-function checkReady(created) {
-  if (dom.ready() || isReady.call(this, created)) {
+function checkReady(created, attributes) {
+  if (dom.ready() || isReady.call(this, created, attributes)) {
     if (this._init$) {
-      const list = this._init$$;
-      if (list) delete this._init$$;
-      created.call(defineProperty(this, '_init$', {value: false}));
-      if (list) list.forEach(invoke);
+      const list = this._init$$ || [];
+      delete this._init$$;
+      const self = defineProperty(this, '_init$', {value: false});
+      attributes.forEach(name => {
+        if (self.hasOwnProperty(name)) {
+          const curr = self[name];
+          delete self[name];
+          list.unshift(() => { self[name] = curr; });
+        }
+      });
+      created.call(self);
+      list.forEach(invoke);
     }
   } else {
     if (!this.hasOwnProperty('_init$$'))
       defineProperty(this, '_init$$', {configurable: true, value: []});
-    dom.list.push(checkReady.bind(this, created));
+    dom.list.push(checkReady.bind(this, created, attributes));
   }
 }
 
@@ -377,10 +385,10 @@ function isPrototypeOf(Class) {
   return this === Class.prototype;
 }
 
-function isReady(created) {
+function isReady(created, attributes) {
   let el = this;
   do { if (el.nextSibling) return true; }
   while (el = el.parentNode);
-  setTimeout(checkReady.bind(this, created));
+  setTimeout(checkReady.bind(this, created, attributes));
   return false;
 }

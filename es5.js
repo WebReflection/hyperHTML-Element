@@ -155,11 +155,13 @@ var HyperHTMLElement = (function (exports) {
   }
 
   function _createSuper(Derived) {
-    return function () {
+    var hasNativeReflectConstruct = _isNativeReflectConstruct();
+
+    return function _createSuperInternal() {
       var Super = _getPrototypeOf(Derived),
           result;
 
-      if (_isNativeReflectConstruct()) {
+      if (hasNativeReflectConstruct) {
         var NewTarget = _getPrototypeOf(this).constructor;
 
         result = Reflect.construct(Super, arguments, NewTarget);
@@ -172,9 +174,7 @@ var HyperHTMLElement = (function (exports) {
   }
 
   /*! (c) Andrea Giammarchi - ISC */
-  var self = null ||
-  /* istanbul ignore next */
-  {};
+  var self = {};
 
   try {
     self.WeakMap = WeakMap;
@@ -225,9 +225,7 @@ var HyperHTMLElement = (function (exports) {
   var WeakMap$1 = self.WeakMap;
 
   /*! (c) Andrea Giammarchi - ISC */
-  var self$1 = null ||
-  /* istanbul ignore next */
-  {};
+  var self$1 = {};
 
   try {
     self$1.WeakSet = WeakSet;
@@ -651,9 +649,7 @@ var HyperHTMLElement = (function (exports) {
   };
 
   /*! (c) Andrea Giammarchi - ISC */
-  var self$2 = null ||
-  /* istanbul ignore next */
-  {};
+  var self$2 = {};
   self$2.CustomEvent = typeof CustomEvent === 'function' ? CustomEvent : function (__p__) {
     CustomEvent[__p__] = new CustomEvent('').constructor[__p__];
     return CustomEvent;
@@ -668,9 +664,7 @@ var HyperHTMLElement = (function (exports) {
   var CustomEvent$1 = self$2.CustomEvent;
 
   /*! (c) Andrea Giammarchi - ISC */
-  var self$3 = null ||
-  /* istanbul ignore next */
-  {};
+  var self$3 = {};
 
   try {
     self$3.Map = Map;
@@ -919,8 +913,13 @@ var HyperHTMLElement = (function (exports) {
     }
   };
 
-  var isArray = Array.isArray || function (toString) {
+  var isArray = Array.isArray ||
+  /* istanbul ignore next */
+  function (toString) {
+    /* istanbul ignore next */
     var $ = toString.call([]);
+    /* istanbul ignore next */
+
     return function isArray(object) {
       return toString.call(object) === $;
     };
@@ -1084,21 +1083,29 @@ var HyperHTMLElement = (function (exports) {
     var fragment = document.createDocumentFragment();
     fragment[appendChild](document[createTextNode]('g'));
     fragment[appendChild](document[createTextNode](''));
+    /* istanbul ignore next */
+
     var content = _native ? document[importNode](fragment, true) : fragment[cloneNode](true);
     return content.childNodes.length < 2 ? function importNode(node, deep) {
       var clone = node[cloneNode]();
 
-      for (var childNodes = node.childNodes || [], length = childNodes.length, i = 0; deep && i < length; i++) {
+      for (var
+      /* istanbul ignore next */
+      childNodes = node.childNodes || [], length = childNodes.length, i = 0; deep && i < length; i++) {
         clone[appendChild](importNode(childNodes[i], deep));
       }
 
       return clone;
-    } : _native ? document[importNode] : function (node, deep) {
+    } :
+    /* istanbul ignore next */
+    _native ? document[importNode] : function (node, deep) {
       return node[cloneNode](!!deep);
     };
   }(document, 'appendChild', 'cloneNode', 'createTextNode', 'importNode');
 
-  var trim = ''.trim || function () {
+  var trim = ''.trim ||
+  /* istanbul ignore next */
+  function () {
     return String(this).replace(/^\s+|\s+/g, '');
   };
 
@@ -2003,6 +2010,15 @@ var HyperHTMLElement = (function (exports) {
 
     return args;
   }
+  /**
+   * best benchmark goes here
+   * https://jsperf.com/tta-bench
+   * I should probably have an @ungap/template-literal-es too
+  export default (...args) => {
+    args[0] = unique(args[0]);
+    return args;
+  };
+   */
 
   var wires = new WeakMap$1(); // A wire is a callback used as tag function
   // to lazily relate a generic object to a template literal.
@@ -2364,7 +2380,7 @@ var HyperHTMLElement = (function (exports) {
           configurable: true,
           value: function aCC(name, prev, curr) {
             if (this._init$) {
-              checkReady.call(this, created);
+              checkReady.call(this, created, attributes);
               if (this._init$) return this._init$$.push(aCC.bind(this, name, prev, curr));
             } // ensure setting same value twice
             // won't trigger twice attributeChangedCallback
@@ -2381,7 +2397,7 @@ var HyperHTMLElement = (function (exports) {
           configurable: true,
           value: function cC() {
             if (this._init$) {
-              checkReady.call(this, created);
+              checkReady.call(this, created, attributes);
               if (this._init$) return this._init$$.push(cC.bind(this));
             }
 
@@ -2519,22 +2535,32 @@ var HyperHTMLElement = (function (exports) {
     document.addEventListener(dom.type, dom, false);
   }
 
-  function checkReady(created) {
-    if (dom.ready() || isReady.call(this, created)) {
+  function checkReady(created, attributes) {
+    if (dom.ready() || isReady.call(this, created, attributes)) {
       if (this._init$) {
-        var list = this._init$$;
-        if (list) delete this._init$$;
-        created.call(defineProperty(this, '_init$', {
+        var list = this._init$$ || [];
+        delete this._init$$;
+        var self = defineProperty(this, '_init$', {
           value: false
-        }));
-        if (list) list.forEach(invoke);
+        });
+        attributes.forEach(function (name) {
+          if (self.hasOwnProperty(name)) {
+            var curr = self[name];
+            delete self[name];
+            list.unshift(function () {
+              self[name] = curr;
+            });
+          }
+        });
+        created.call(self);
+        list.forEach(invoke);
       }
     } else {
       if (!this.hasOwnProperty('_init$$')) defineProperty(this, '_init$$', {
         configurable: true,
         value: []
       });
-      dom.list.push(checkReady.bind(this, created));
+      dom.list.push(checkReady.bind(this, created, attributes));
     }
   }
 
@@ -2546,18 +2572,20 @@ var HyperHTMLElement = (function (exports) {
     return this === Class.prototype;
   }
 
-  function isReady(created) {
+  function isReady(created, attributes) {
     var el = this;
 
     do {
       if (el.nextSibling) return true;
     } while (el = el.parentNode);
 
-    setTimeout(checkReady.bind(this, created));
+    setTimeout(checkReady.bind(this, created, attributes));
     return false;
   }
 
   exports.default = HyperHTMLElement;
+
+  Object.defineProperty(exports, '__esModule', { value: true });
 
   return exports["default"];
 

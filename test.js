@@ -372,7 +372,24 @@ setTimeout(function () {
   s.state = {z: 123};
   tressa.assert(s.state.z === 123 && !s.state.a, 'state can be re-set too');
 
-  delete require.cache[require.resolve('./cjs')];
-  global.Symbol = {};
-  require('./cjs');
+  class LateToTheParty extends HyperHTMLElement {
+    static get booleanAttributes() { return ['test']; }
+    attributeChangedCallback(name, prev, curr) {
+      tressa.assert(name === 'test', 'test reacted');
+      tressa.assert(prev == null, 'test reacted without a previous value');
+      tressa.assert(curr == true && curr == this[name], 'test returns expected value');
+    }
+  }
+
+  var lttp = document.createElement('late-to-the-party');
+  lttp.test = true;
+  LateToTheParty.define('late-to-the-party');
+  document.body.appendChild(lttp);
+
+  setTimeout(() => {
+    delete require.cache[require.resolve('./cjs')];
+    global.Symbol = {};
+    require('./cjs');
+  }, 100);
+
 }, 100);
