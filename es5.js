@@ -2380,7 +2380,7 @@ var HyperHTMLElement = (function (exports) {
           configurable: true,
           value: function aCC(name, prev, curr) {
             if (this._init$) {
-              checkReady.call(this, created, attributes);
+              checkReady.call(this, created, attributes, booleanAttributes);
               if (this._init$) return this._init$$.push(aCC.bind(this, name, prev, curr));
             } // ensure setting same value twice
             // won't trigger twice attributeChangedCallback
@@ -2397,7 +2397,7 @@ var HyperHTMLElement = (function (exports) {
           configurable: true,
           value: function cC() {
             if (this._init$) {
-              checkReady.call(this, created, attributes);
+              checkReady.call(this, created, attributes, booleanAttributes);
               if (this._init$) return this._init$$.push(cC.bind(this));
             }
 
@@ -2535,13 +2535,16 @@ var HyperHTMLElement = (function (exports) {
     document.addEventListener(dom.type, dom, false);
   }
 
-  function checkReady(created, attributes) {
-    if (dom.ready() || isReady.call(this, created, attributes)) {
+  function checkReady(created, attributes, booleanAttributes) {
+    if (dom.ready() || isReady.call(this, created, attributes, booleanAttributes)) {
       if (this._init$) {
         var list = this._init$$ || [];
         delete this._init$$;
         var self = defineProperty(this, '_init$', {
           value: false
+        });
+        booleanAttributes.forEach(function (name) {
+          if (self.getAttribute(name) === 'false') self.removeAttribute(name);
         });
         attributes.forEach(function (name) {
           if (self.hasOwnProperty(name)) {
@@ -2560,7 +2563,7 @@ var HyperHTMLElement = (function (exports) {
         configurable: true,
         value: []
       });
-      dom.list.push(checkReady.bind(this, created, attributes));
+      dom.list.push(checkReady.bind(this, created, attributes, booleanAttributes));
     }
   }
 
@@ -2572,14 +2575,14 @@ var HyperHTMLElement = (function (exports) {
     return this === Class.prototype;
   }
 
-  function isReady(created, attributes) {
+  function isReady(created, attributes, booleanAttributes) {
     var el = this;
 
     do {
       if (el.nextSibling) return true;
     } while (el = el.parentNode);
 
-    setTimeout(checkReady.bind(this, created, attributes));
+    setTimeout(checkReady.bind(this, created, attributes, booleanAttributes));
     return false;
   }
 

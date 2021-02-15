@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="ce.js"></script>
+  <style>
+  p {
+    display: inline-block;
+    background-color: rgba(0,255,0,0.2);
+  }
+  p.error {
+    background-color: rgba(255,0,0,0.2);
+  }
+  </style>
+  <script src="../index.js"></script>
+  <script>
+  this.onload = () => {
+    const attributeValue = false;
+
+    class MyElement extends HyperHTMLElement {
+      static get booleanAttributes() { return ['checked']; }
+      
+      attributeChangedCallback() {
+        this.render();
+      }
+
+      created() { this.render(); }
+
+      render()
+      {
+        return this.html`<p class="${this.checked !== attributeValue ? 'error' : ''}">
+          value of <code>this.checked</code> is <code>${this.checked}</code>
+          should be <code>${attributeValue}</code>
+        </p>`;
+      }
+    }
+
+    HyperHTMLElement.bind(document.body)`<my-element checked=${attributeValue}></my-element>`;
+
+    MyElement.define("my-element");
+
+  };
+  </script>
+</head>
+<body>
+</body>
+</html>
