@@ -1129,7 +1129,7 @@ var HyperHTMLElement = (function (exports) {
   var COMMENT_NODE = 8;
   var ELEMENT_NODE = 1;
   var TEXT_NODE = 3;
-  var SHOULD_USE_TEXT_CONTENT = /^(?:style|textarea)$/i;
+  var SHOULD_USE_TEXT_CONTENT = /^(?:plaintext|script|style|textarea|title|xmp)$/i;
   var VOID_ELEMENTS = /^(?:area|base|br|col|embed|hr|img|input|keygen|link|menuitem|meta|param|source|track|wbr)$/i;
 
   /*! (c) Andrea Giammarchi - ISC */
@@ -1661,6 +1661,16 @@ var HyperHTMLElement = (function (exports) {
 
   var canDiff = function canDiff(value) {
     return 'ELEMENT_NODE' in value;
+  }; // borrowed from uhandlers
+  // https://github.com/WebReflection/uhandlers
+
+
+  var booleanSetter = function booleanSetter(node, key, oldValue) {
+    return function (newValue) {
+      if (oldValue !== !!newValue) {
+        if (oldValue = !!newValue) node.setAttribute(key, '');else node.removeAttribute(key);
+      }
+    };
   };
 
   var hyperSetter = function hyperSetter(node, name, svg) {
@@ -1726,77 +1736,78 @@ var HyperHTMLElement = (function (exports) {
       // handle it differently from others
 
       if (name === 'style') return hyperStyle(node, original, isSVG); // direct accessors for <input .value=${...}> and friends
-      else if (name.slice(0, 1) === '.') return hyperSetter(node, name.slice(1), isSVG); // the name is an event one,
-        // add/remove event listeners accordingly
-        else if (/^on/.test(name)) {
-            var type = name.slice(2);
+      else if (name.slice(0, 1) === '.') return hyperSetter(node, name.slice(1), isSVG); // boolean accessors for <input .value=${...}> and friends
+        else if (name.slice(0, 1) === '?') return booleanSetter(node, name.slice(1)); // the name is an event one,
+          // add/remove event listeners accordingly
+          else if (/^on/.test(name)) {
+              var type = name.slice(2);
 
-            if (type === CONNECTED || type === DISCONNECTED) {
-              observe(node);
-            } else if (name.toLowerCase() in node) {
-              type = type.toLowerCase();
-            }
-
-            return function (newValue) {
-              if (oldValue !== newValue) {
-                if (oldValue) node.removeEventListener(type, oldValue, false);
-                oldValue = newValue;
-                if (newValue) node.addEventListener(type, newValue, false);
+              if (type === CONNECTED || type === DISCONNECTED) {
+                observe(node);
+              } else if (name.toLowerCase() in node) {
+                type = type.toLowerCase();
               }
-            };
-          } // the attribute is special ('value' in input)
-          // and it's not SVG *or* the name is exactly data,
-          // in this case assign the value directly
-          else if (name === 'data' || !isSVG && name in node && !readOnly.test(name)) {
+
               return function (newValue) {
                 if (oldValue !== newValue) {
+                  if (oldValue) node.removeEventListener(type, oldValue, false);
                   oldValue = newValue;
-
-                  if (node[name] !== newValue && newValue == null) {
-                    // cleanup on null to avoid silly IE/Edge bug
-                    node[name] = '';
-                    node.removeAttribute(name);
-                  } else node[name] = newValue;
+                  if (newValue) node.addEventListener(type, newValue, false);
                 }
               };
-            } else if (name in Intent.attributes) {
-              return function (any) {
-                var newValue = Intent.attributes[name](node, any);
-
-                if (oldValue !== newValue) {
-                  oldValue = newValue;
-                  if (newValue == null) node.removeAttribute(name);else node.setAttribute(name, newValue);
-                }
-              };
-            } // in every other case, use the attribute node as it is
-            // update only the value, set it as node only when/if needed
-            else {
-                var owner = false;
-                var attribute = original.cloneNode(true);
+            } // the attribute is special ('value' in input)
+            // and it's not SVG *or* the name is exactly data,
+            // in this case assign the value directly
+            else if (name === 'data' || !isSVG && name in node && !readOnly.test(name)) {
                 return function (newValue) {
                   if (oldValue !== newValue) {
                     oldValue = newValue;
 
-                    if (attribute.value !== newValue) {
-                      if (newValue == null) {
-                        if (owner) {
-                          owner = false;
-                          node.removeAttributeNode(attribute);
-                        }
+                    if (node[name] !== newValue && newValue == null) {
+                      // cleanup on null to avoid silly IE/Edge bug
+                      node[name] = '';
+                      node.removeAttribute(name);
+                    } else node[name] = newValue;
+                  }
+                };
+              } else if (name in Intent.attributes) {
+                return function (any) {
+                  var newValue = Intent.attributes[name](node, any);
 
-                        attribute.value = newValue;
-                      } else {
-                        attribute.value = newValue;
+                  if (oldValue !== newValue) {
+                    oldValue = newValue;
+                    if (newValue == null) node.removeAttribute(name);else node.setAttribute(name, newValue);
+                  }
+                };
+              } // in every other case, use the attribute node as it is
+              // update only the value, set it as node only when/if needed
+              else {
+                  var owner = false;
+                  var attribute = original.cloneNode(true);
+                  return function (newValue) {
+                    if (oldValue !== newValue) {
+                      oldValue = newValue;
 
-                        if (!owner) {
-                          owner = true;
-                          node.setAttributeNode(attribute);
+                      if (attribute.value !== newValue) {
+                        if (newValue == null) {
+                          if (owner) {
+                            owner = false;
+                            node.removeAttributeNode(attribute);
+                          }
+
+                          attribute.value = newValue;
+                        } else {
+                          attribute.value = newValue;
+
+                          if (!owner) {
+                            owner = true;
+                            node.setAttributeNode(attribute);
+                          }
                         }
                       }
                     }
-                  }
-                };
-              }
+                  };
+                }
     },
     // in a hyper(node)`<div>${content}</div>` case
     // everything could happen:

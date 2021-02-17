@@ -1156,7 +1156,7 @@ var HyperHTMLElement = (function (exports) {
   var ELEMENT_NODE = 1;
   var TEXT_NODE = 3;
 
-  var SHOULD_USE_TEXT_CONTENT = /^(?:style|textarea)$/i;
+  var SHOULD_USE_TEXT_CONTENT = /^(?:plaintext|script|style|textarea|title|xmp)$/i;
   var VOID_ELEMENTS = /^(?:area|base|br|col|embed|hr|img|input|keygen|link|menuitem|meta|param|source|track|wbr)$/i;
 
   /*! (c) Andrea Giammarchi - ISC */
@@ -1660,6 +1660,17 @@ var HyperHTMLElement = (function (exports) {
   // returns true if domdiff can handle the value
   const canDiff = value => 'ELEMENT_NODE' in value;
 
+  // borrowed from uhandlers
+  // https://github.com/WebReflection/uhandlers
+  const booleanSetter = (node, key, oldValue) => newValue => {
+    if (oldValue !== !!newValue) {
+      if ((oldValue = !!newValue))
+        node.setAttribute(key, '');
+      else
+        node.removeAttribute(key);
+    }
+  };
+
   const hyperSetter = (node, name, svg) => svg ?
     value => {
       try {
@@ -1726,6 +1737,9 @@ var HyperHTMLElement = (function (exports) {
       // direct accessors for <input .value=${...}> and friends
       else if (name.slice(0, 1) === '.')
         return hyperSetter(node, name.slice(1), isSVG);
+      // boolean accessors for <input .value=${...}> and friends
+      else if (name.slice(0, 1) === '?')
+        return booleanSetter(node, name.slice(1));
       // the name is an event one,
       // add/remove event listeners accordingly
       else if (/^on/.test(name)) {
