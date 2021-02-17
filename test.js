@@ -377,7 +377,7 @@ setTimeout(function () {
     attributeChangedCallback(name, prev, curr) {
       tressa.assert(name === 'test', 'test reacted');
       tressa.assert(prev == null, 'test reacted without a previous value');
-      tressa.assert(curr == true && curr == this[name], 'test returns expected value');
+      tressa.assert(curr != null && this[name], 'test returns expected value');
     }
   }
 

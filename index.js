@@ -2262,7 +2262,7 @@ var HyperHTMLElement = (function (exports) {
               if (!value || value === 'false')
                 this.removeAttribute(name);
               else
-                this.setAttribute(name, value);
+                this.setAttribute(name, '');
             }
           }
         );

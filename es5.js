@@ -2336,7 +2336,7 @@ var HyperHTMLElement = (function (exports) {
               return this.hasAttribute(name);
             },
             set: function set(value) {
-              if (!value || value === 'false') this.removeAttribute(name);else this.setAttribute(name, value);
+              if (!value || value === 'false') this.removeAttribute(name);else this.setAttribute(name, '');
             }
           });
         }); // Class.observedAttributes
