@@ -10,12 +10,17 @@ const classes = [];
 const defineProperty = O.defineProperty;
 const getOwnPropertyDescriptor = O.getOwnPropertyDescriptor;
 const getOwnPropertyNames = O.getOwnPropertyNames;
+/* istanbul ignore next */
 const getOwnPropertySymbols = O.getOwnPropertySymbols || (() => []);
+/* istanbul ignore next */
 const getPrototypeOf = O.getPrototypeOf || (o => o.__proto__);
+/* istanbul ignore next */
 const ownKeys = typeof Reflect === 'object' && Reflect.ownKeys ||
                 (o => getOwnPropertyNames(o).concat(getOwnPropertySymbols(o)));
+/* istanbul ignore next */
 const setPrototypeOf = O.setPrototypeOf ||
                       ((o, p) => (o.__proto__ = p, o));
+/* istanbul ignore stop */
 const camel = name => name.replace(/-([a-z])/g, ($0, $1) => $1.toUpperCase());
 const {attachShadow} = HTMLElement.prototype;
 const sr = new WeakMap;

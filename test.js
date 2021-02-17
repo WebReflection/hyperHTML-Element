@@ -1,9 +1,10 @@
 const tressa = require('tressa');
-const {CustomEvent, Document, HTMLElement} = require('basichtml');
+const {parseHTML} = require('linkedom');
 
-global.document = new Document();
-global.CustomEvent = CustomEvent;
-global.customElements = document.customElements;
+const {document, customElements, HTMLElement, CustomEvent} = parseHTML('<html />');
+
+global.document = document;
+global.customElements = customElements;
 global.HTMLElement = HTMLElement;
 
 tressa.title('HyperHTMLElement');
@@ -130,16 +131,16 @@ setTimeout(function () {
   el.anotherValue = '456';
   el.boolean = true;
   tressa.assert(el.value === '123' && el.anotherValue === '456', 'attributes set as expected');
-  tressa.assert(el.outerHTML === '<my-input value="123" another-value="456" boolean="" />', 'input with expected output');
+  tressa.assert(el.outerHTML === '<my-input boolean another-value="456" value="123"></my-input>', 'input with expected output');
 
   el.boolean = 'absolutely';
   tressa.assert(el.boolean === true, 'empty attributes are returned as true');
 
   el.boolean = false;
-  tressa.assert(el.outerHTML === '<my-input value="123" another-value="456" />', 'input without boolean');
+  tressa.assert(el.outerHTML === '<my-input another-value="456" value="123"></my-input>', 'input without boolean');
 
   el.anotherValue = null;
-  tressa.assert(el.outerHTML === '<my-input value="123" />', 'input without other value');
+  tressa.assert(el.outerHTML === '<my-input value="123"></my-input>', 'input without other value');
 
   // for code coverage sake
   class MyEmptiness extends HyperHTMLElement {}
@@ -260,7 +261,7 @@ setTimeout(function () {
 
   // reaches currentTarget without a dataset
   document.addEventListener('click', el);
-  document.dispatchEvent(evt);
+  document.dispatchEvent(evt = new CustomEvent('click'));
   document.removeEventListener('click', el);
 
   // delegated handleEvent
@@ -277,7 +278,6 @@ setTimeout(function () {
   var evt = new CustomEvent('click');
   el.firstChild.dispatchEvent(evt);
 
-  Object.defineProperty(el.firstChild, 'dataset', {value: null});
   el.firstChild.onclick = el.whenClickHappens;
   el.firstChild.dispatchEvent(new CustomEvent('click'));
 
@@ -290,6 +290,8 @@ setTimeout(function () {
       this.html`<p ref="gotcha" />`;
     }
   }
+
+  MyShadow.define('my-shadow');
 
   tressa.assert(!!(new MyShadow).refs.gotcha, 'ref works in shadow dom too');
 
@@ -360,7 +362,9 @@ setTimeout(function () {
     get defaultState() { return {a: 'a'}; }
     render() {}
   }
+  DefaultState.define('default-state');
   class State extends HyperHTMLElement {}
+  State.define('just-state');
   var ds = new DefaultState;
   var o = ds.state;
   tressa.assert(!ds.propertyIsEnumerable('state'), 'states are not enumerable');

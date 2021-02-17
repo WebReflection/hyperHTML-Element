@@ -2181,22 +2181,31 @@ var HyperHTMLElement = (function (exports) {
   var defineProperty = O.defineProperty;
   var getOwnPropertyDescriptor = O.getOwnPropertyDescriptor;
   var getOwnPropertyNames = O.getOwnPropertyNames;
+  /* istanbul ignore next */
 
   var getOwnPropertySymbols = O.getOwnPropertySymbols || function () {
     return [];
   };
+  /* istanbul ignore next */
+
 
   var getPrototypeOf = O.getPrototypeOf || function (o) {
     return o.__proto__;
   };
+  /* istanbul ignore next */
+
 
   var ownKeys = (typeof Reflect === "undefined" ? "undefined" : _typeof(Reflect)) === 'object' && Reflect.ownKeys || function (o) {
     return getOwnPropertyNames(o).concat(getOwnPropertySymbols(o));
   };
+  /* istanbul ignore next */
+
 
   var setPrototypeOf = O.setPrototypeOf || function (o, p) {
     return o.__proto__ = p, o;
   };
+  /* istanbul ignore stop */
+
 
   var camel = function camel(name) {
     return name.replace(/-([a-z])/g, function ($0, $1) {
