@@ -75,6 +75,7 @@ declare class HyperHTMLElement<T = {}> {
    constructor();
    created(): void;
    attributeChangedCallback(name: string, prev: string, curr: string): void;
+   handleEvent(ev: Event): void;
    html: WiredTemplateFunction;
    state: T;
    readonly defaultState: T;
