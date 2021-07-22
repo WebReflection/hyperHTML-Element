@@ -392,6 +392,24 @@ setTimeout(function () {
   LateToTheParty.define('late-to-the-party');
   document.body.appendChild(lttp);
 
+  class KebabHouse extends HyperHTMLElement {
+    static get booleanAttributes() {
+      return ['kebab-sold'];
+    }
+
+    static get observedAttributes() {
+      return ['kebab-sold'];
+    }
+  }
+
+  KebabHouse.define('kebab-house');
+  const kebabHouse = document.createElement('kebab-house');
+  kebabHouse.kebabSold = 'kebabSold';
+  tressa.assert(
+    kebabHouse.kebabSold === true,
+    'boolean attribute getter written in kebab-case is not overridden by normal observed attribute getter'
+  );
+
   setTimeout(() => {
     delete require.cache[require.resolve('./cjs')];
     global.Symbol = {};
