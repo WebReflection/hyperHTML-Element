@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <script>document.write(
+        '<script src="../' + (location.search.toLocaleLowerCase() === '?es5' ? 'es5' : 'index') + '.js?_=' +
+        Math.random() + '"><' + '/script>');</script>
+    <script>document.write(
+        '<script src="' + (location.search.toLocaleLowerCase() === '?es5' ? 'test.es5' : 'test') + '.js?_=' +
+        Math.random() + '"><' + '/script>');</script>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/javascript">
+
+class Toolbar extends HyperHTMLElement {
+  static get booleanAttributes() {
+    return ['show-tooltips'];
+  }
+
+  shouldShowTooltip() {
+    return this.showTooltips === true;
+  }
+}
+
+Toolbar.define('class-toolbar');
+
+class ExtendedToolbar extends Toolbar {}
+
+ExtendedToolbar.define('class-extended-toolbar');
+
+const extendedToolbar = document.createElement('class-extended-toolbar');
+
+extendedToolbar.showTooltips = true;
+console.log(extendedToolbar.showTooltips); // 'true'
+console.log(typeof extendedToolbar.showTooltips); // string
+</script>
+</body>
+</html>

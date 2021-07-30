@@ -2281,7 +2281,9 @@ var HyperHTMLElement = (function (exports) {
       // will automatically do
       // el.setAttribute('observed', 123);
       // triggering also the attributeChangedCallback
-      const observedAttributes = Class.observedAttributes || [];
+      const observedAttributes = (Class.observedAttributes || []).filter(
+        attribute => booleanAttributes.indexOf(attribute) < 0
+      );
       observedAttributes.forEach(name => {
         // it is possible to redefine the behavior at any time
         // simply overwriting get prop() and set prop(value)
