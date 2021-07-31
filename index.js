@@ -2,12 +2,12 @@ var HyperHTMLElement = (function (exports) {
   'use strict';
 
   /*! (c) Andrea Giammarchi - ISC */
-  var self$3 = {};
-  try { self$3.WeakMap = WeakMap; }
+  var self = {};
+  try { self.WeakMap = WeakMap; }
   catch (WeakMap) {
     // this could be better but 90% of the time
     // it's everything developers need as fallback
-    self$3.WeakMap = (function (id, Object) {    var dP = Object.defineProperty;
+    self.WeakMap = (function (id, Object) {    var dP = Object.defineProperty;
       var hOP = Object.hasOwnProperty;
       var proto = WeakMap.prototype;
       proto.delete = function (key) {
@@ -34,11 +34,11 @@ var HyperHTMLElement = (function (exports) {
       }
     }(Math.random(), Object));
   }
-  var WeakMap$1 = self$3.WeakMap;
+  var WeakMap$1 = self.WeakMap;
 
   /*! (c) Andrea Giammarchi - ISC */
-  var self$2 = {};
-  try { self$2.WeakSet = WeakSet; }
+  var self$1 = {};
+  try { self$1.WeakSet = WeakSet; }
   catch (WeakSet) {
     (function (id, dP) {
       var proto = WeakSet.prototype;
@@ -53,14 +53,14 @@ var HyperHTMLElement = (function (exports) {
       proto.delete = function (object) {
         return this.has(object) && delete object[this._];
       };
-      self$2.WeakSet = WeakSet;
+      self$1.WeakSet = WeakSet;
       function WeakSet() {      dP(this, '_', {value: '_@ungap/weakmap' + id++});
       }
     }(Math.random(), Object.defineProperty));
   }
-  var WeakSet$1 = self$2.WeakSet;
+  var WeakSet$1 = self$1.WeakSet;
 
-  const {indexOf: indexOf$1, slice: slice$1} = [];
+  const {indexOf, slice} = [];
 
   const append = (get, parent, children, start, end, before) => {
     const isSelect = 'selectedIndex' in parent;
@@ -73,7 +73,7 @@ var HyperHTMLElement = (function (exports) {
         let {selectedIndex} = parent;
         parent.selectedIndex = selectedIndex < 0 ?
           start :
-          indexOf$1.call(parent.querySelectorAll('option'), child);
+          indexOf.call(parent.querySelectorAll('option'), child);
       }
       start++;
     }
@@ -83,7 +83,7 @@ var HyperHTMLElement = (function (exports) {
 
   const identity = O => O;
 
-  const indexOf = (
+  const indexOf$1 = (
     moreNodes,
     moreStart,
     moreEnd,
@@ -521,7 +521,7 @@ var HyperHTMLElement = (function (exports) {
 
     // 2 simple indels: the shortest sequence is a subsequence of the longest
     if (currentChanges < futureChanges) {
-      i = indexOf(
+      i = indexOf$1(
         futureNodes,
         futureStart,
         futureEnd,
@@ -553,7 +553,7 @@ var HyperHTMLElement = (function (exports) {
     }
     /* istanbul ignore else */
     else if (futureChanges < currentChanges) {
-      i = indexOf(
+      i = indexOf$1(
         currentNodes,
         currentStart,
         currentEnd,
@@ -652,8 +652,8 @@ var HyperHTMLElement = (function (exports) {
   };
 
   /*! (c) Andrea Giammarchi - ISC */
-  var self$1 = {};
-  self$1.CustomEvent = typeof CustomEvent === 'function' ?
+  var self$2 = {};
+  self$2.CustomEvent = typeof CustomEvent === 'function' ?
     CustomEvent :
     (function (__p__) {
       CustomEvent[__p__] = new CustomEvent('').constructor[__p__];
@@ -665,13 +665,13 @@ var HyperHTMLElement = (function (exports) {
         return e;
       }
     }('prototype'));
-  var CustomEvent$1 = self$1.CustomEvent;
+  var CustomEvent$1 = self$2.CustomEvent;
 
   /*! (c) Andrea Giammarchi - ISC */
-  var self = {};
-  try { self.Map = Map; }
+  var self$3 = {};
+  try { self$3.Map = Map; }
   catch (Map) {
-    self.Map = function Map() {
+    self$3.Map = function Map() {
       var i = 0;
       var k = [];
       var v = [];
@@ -709,7 +709,7 @@ var HyperHTMLElement = (function (exports) {
       }
     };
   }
-  var Map$1 = self.Map;
+  var Map$1 = self$3.Map;
 
   // hyperHTML.Component is a very basic class
   // able to create Custom Elements like components
@@ -1708,7 +1708,7 @@ var HyperHTMLElement = (function (exports) {
   const readOnly = /^(?:form|list)$/i;
 
   // reused every slice time
-  const slice = [].slice;
+  const slice$1 = [].slice;
 
   // simplifies text node creation
   const text = (node, text) => node.ownerDocument.createTextNode(text);
@@ -1914,7 +1914,7 @@ var HyperHTMLElement = (function (exports) {
                 node.parentNode,
                 childNodes,
                 value.nodeType === DOCUMENT_FRAGMENT_NODE ?
-                  slice.call(value.childNodes) :
+                  slice$1.call(value.childNodes) :
                   [value],
                 diffOptions
               );
@@ -1930,7 +1930,7 @@ var HyperHTMLElement = (function (exports) {
               childNodes = domdiff(
                 node.parentNode,
                 childNodes,
-                slice.call(
+                slice$1.call(
                   createContent(
                     [].concat(value.html).join(''),
                     nodeType
@@ -1939,7 +1939,7 @@ var HyperHTMLElement = (function (exports) {
                 diffOptions
               );
             } else if ('length' in value) {
-              anyContent(slice.call(value));
+              anyContent(slice$1.call(value));
             } else {
               anyContent(Intent.invoke(value, anyContent));
             }
@@ -1971,7 +1971,7 @@ var HyperHTMLElement = (function (exports) {
             } else if ('html' in value) {
               textContent([].concat(value.html).join(''));
             } else if ('length' in value) {
-              textContent(slice.call(value).join(''));
+              textContent(slice$1.call(value).join(''));
             } else {
               textContent(Intent.invoke(value, textContent));
             }

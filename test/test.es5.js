@@ -1,8 +1,46 @@
 "use strict";
 
+function _templateObject4() {
+  var data = _taggedTemplateLiteral(["<my-self name=\"Rando\" age=\"17\" active=", "></my-self>"]);
+
+  _templateObject4 = function _templateObject4() {
+    return data;
+  };
+
+  return data;
+}
+
+function _templateObject3() {
+  var data = _taggedTemplateLiteral(["it worked"]);
+
+  _templateObject3 = function _templateObject3() {
+    return data;
+  };
+
+  return data;
+}
+
+function _templateObject2() {
+  var data = _taggedTemplateLiteral(["\n    <input ref=\"input\" value=\"", "\" oninput=\"", "\">"]);
+
+  _templateObject2 = function _templateObject2() {
+    return data;
+  };
+
+  return data;
+}
+
 function _typeof(obj) { "@babel/helpers - typeof"; if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
 
-var _templateObject, _templateObject2, _templateObject3, _templateObject4;
+function _templateObject() {
+  var data = _taggedTemplateLiteral(["\n    Hi, my name is ", ",\n    I am ", " ", ""]);
+
+  _templateObject = function _templateObject() {
+    return data;
+  };
+
+  return data;
+}
 
 function _taggedTemplateLiteral(strings, raw) { if (!raw) { raw = strings.slice(0); } return Object.freeze(Object.defineProperties(strings, { raw: { value: Object.freeze(raw) } })); }
 
@@ -22,7 +60,7 @@ function _possibleConstructorReturn(self, call) { if (call && (_typeof(call) ===
 
 function _assertThisInitialized(self) { if (self === void 0) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return self; }
 
-function _isNativeReflectConstruct() { if (typeof Reflect === "undefined" || !Reflect.construct) return false; if (Reflect.construct.sham) return false; if (typeof Proxy === "function") return true; try { Boolean.prototype.valueOf.call(Reflect.construct(Boolean, [], function () {})); return true; } catch (e) { return false; } }
+function _isNativeReflectConstruct() { if (typeof Reflect === "undefined" || !Reflect.construct) return false; if (Reflect.construct.sham) return false; if (typeof Proxy === "function") return true; try { Date.prototype.toString.call(Reflect.construct(Date, [], function () {})); return true; } catch (e) { return false; } }
 
 function _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) { return o.__proto__ || Object.getPrototypeOf(o); }; return _getPrototypeOf(o); }
 
@@ -50,7 +88,7 @@ var MySelf = /*#__PURE__*/function (_HyperHTMLElement) {
   }, {
     key: "render",
     value: function render() {
-      return this.html(_templateObject || (_templateObject = _taggedTemplateLiteral(["\n    Hi, my name is ", ",\n    I am ", " ", ""])), this.name, this.age, this.active ? ' and still active' : '');
+      return this.html(_templateObject(), this.name, this.age, this.active ? ' and still active' : '');
     }
   }], [{
     key: "booleanAttributes",
@@ -95,7 +133,7 @@ var MyInput = /*#__PURE__*/function (_HyperHTMLElement2) {
   }, {
     key: "render",
     value: function render() {
-      return this.html(_templateObject2 || (_templateObject2 = _taggedTemplateLiteral(["\n    <input ref=\"input\" value=\"", "\" oninput=\"", "\">"])), this.value, this);
+      return this.html(_templateObject2(), this.value, this);
     }
   }], [{
     key: "observedAttributes",
@@ -129,7 +167,7 @@ var MyLink = /*#__PURE__*/function (_HyperHTMLElement3) {
   }, {
     key: "render",
     value: function render() {
-      return this.html(_templateObject3 || (_templateObject3 = _taggedTemplateLiteral(["it worked"])));
+      return this.html(_templateObject3());
     }
   }]);
 
@@ -140,6 +178,6 @@ MyLink.define('my-link', {
   "extends": 'a'
 });
 setTimeout(function () {
-  HyperHTMLElement.bind(document.body.appendChild(document.createElement('div')))(_templateObject4 || (_templateObject4 = _taggedTemplateLiteral(["<my-self name=\"Rando\" age=\"17\" active=", "></my-self>"])), Math.random() < .5);
+  HyperHTMLElement.bind(document.body.appendChild(document.createElement('div')))(_templateObject4(), Math.random() < .5);
 }, 1000);
 
