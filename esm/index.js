@@ -45,20 +45,21 @@ class HyperHTMLElement extends HTMLElement {
     // while truthy values will be set as is.
     // Boolean attributes are also automatically observed.
     const booleanAttributes = Class.booleanAttributes || [];
-    booleanAttributes.forEach(name => {
+    booleanAttributes.forEach(attribute => {
+      const name = camel(attribute);
       if (!(name in proto)) defineProperty(
         proto,
-        camel(name),
+        name,
         {
           configurable: true,
           get() {
-            return this.hasAttribute(name);
+            return this.hasAttribute(attribute);
           },
           set(value) {
             if (!value || value === 'false')
-              this.removeAttribute(name);
+              this.removeAttribute(attribute);
             else
-              this.setAttribute(name, '');
+              this.setAttribute(attribute, '');
           }
         }
       );
@@ -75,22 +76,23 @@ class HyperHTMLElement extends HTMLElement {
     const observedAttributes = (Class.observedAttributes || []).filter(
       attribute => booleanAttributes.indexOf(attribute) < 0
     );
-    observedAttributes.forEach(name => {
+    observedAttributes.forEach(attribute => {
       // it is possible to redefine the behavior at any time
       // simply overwriting get prop() and set prop(value)
+      const name = camel(attribute);
       if (!(name in proto)) defineProperty(
         proto,
-        camel(name),
+        name,
         {
           configurable: true,
           get() {
-            return this.getAttribute(name);
+            return this.getAttribute(attribute);
           },
           set(value) {
             if (value == null)
-              this.removeAttribute(name);
+              this.removeAttribute(attribute);
             else
-              this.setAttribute(name, value);
+              this.setAttribute(attribute, value);
           }
         }
       );

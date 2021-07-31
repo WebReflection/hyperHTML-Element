@@ -392,6 +392,23 @@ setTimeout(function () {
   LateToTheParty.define('late-to-the-party');
   document.body.appendChild(lttp);
 
+  class KebabHouse extends HyperHTMLElement {
+    static get observedAttributes() {
+      return ['kebab-sold'];
+    }
+
+    get kebabSold () {
+        return 'Yes, it is';
+    }
+  }
+
+  KebabHouse.define('kebab-house');
+  const kebabHouse = document.createElement('kebab-house');
+  tressa.assert(
+    kebabHouse.kebabSold === 'Yes, it is',
+    `Observed attribute getters don't overwrite predefined getters`
+  );
+
   setTimeout(() => {
     delete require.cache[require.resolve('./cjs')];
     global.Symbol = {};
