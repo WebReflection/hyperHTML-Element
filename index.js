@@ -2170,6 +2170,7 @@ var HyperHTMLElement = (function (exports) {
   hyper.define = define;
   hyper.diff = domdiff;
   hyper.hyper = hyper;
+  hyper.html = hyper;
   hyper.observe = observe;
   hyper.tagger = tagger;
   hyper.wire = wire;
