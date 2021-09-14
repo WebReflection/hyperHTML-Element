@@ -76,7 +76,7 @@ var HyperHTMLElement = (function (exports) {
     if (typeof Proxy === "function") return true;
 
     try {
-      Date.prototype.toString.call(Reflect.construct(Date, [], function () {}));
+      Boolean.prototype.valueOf.call(Reflect.construct(Boolean, [], function () {}));
       return true;
     } catch (e) {
       return false;
@@ -149,6 +149,8 @@ var HyperHTMLElement = (function (exports) {
   function _possibleConstructorReturn(self, call) {
     if (call && (typeof call === "object" || typeof call === "function")) {
       return call;
+    } else if (call !== void 0) {
+      throw new TypeError("Derived constructors may only return object or undefined");
     }
 
     return _assertThisInitialized(self);
@@ -174,14 +176,14 @@ var HyperHTMLElement = (function (exports) {
   }
 
   /*! (c) Andrea Giammarchi - ISC */
-  var self = {};
+  var self$3 = {};
 
   try {
-    self.WeakMap = WeakMap;
+    self$3.WeakMap = WeakMap;
   } catch (WeakMap) {
     // this could be better but 90% of the time
     // it's everything developers need as fallback
-    self.WeakMap = function (id, Object) {
+    self$3.WeakMap = function (id, Object) {
 
       var dP = Object.defineProperty;
       var hOP = Object.hasOwnProperty;
@@ -222,13 +224,13 @@ var HyperHTMLElement = (function (exports) {
     }(Math.random(), Object);
   }
 
-  var WeakMap$1 = self.WeakMap;
+  var WeakMap$1 = self$3.WeakMap;
 
   /*! (c) Andrea Giammarchi - ISC */
-  var self$1 = {};
+  var self$2 = {};
 
   try {
-    self$1.WeakSet = WeakSet;
+    self$2.WeakSet = WeakSet;
   } catch (WeakSet) {
     (function (id, dP) {
       var proto = WeakSet.prototype;
@@ -249,7 +251,7 @@ var HyperHTMLElement = (function (exports) {
         return this.has(object) && delete object[this._];
       };
 
-      self$1.WeakSet = WeakSet;
+      self$2.WeakSet = WeakSet;
 
       function WeakSet() {
 
@@ -260,10 +262,10 @@ var HyperHTMLElement = (function (exports) {
     })(Math.random(), Object.defineProperty);
   }
 
-  var WeakSet$1 = self$1.WeakSet;
+  var WeakSet$1 = self$2.WeakSet;
 
   var _ref = [],
-      indexOf = _ref.indexOf;
+      indexOf$1 = _ref.indexOf;
 
   var append = function append(get, parent, children, start, end, before) {
     var isSelect = ('selectedIndex' in parent);
@@ -276,7 +278,7 @@ var HyperHTMLElement = (function (exports) {
       if (isSelect && noSelection && child.selected) {
         noSelection = !noSelection;
         var selectedIndex = parent.selectedIndex;
-        parent.selectedIndex = selectedIndex < 0 ? start : indexOf.call(parent.querySelectorAll('option'), child);
+        parent.selectedIndex = selectedIndex < 0 ? start : indexOf$1.call(parent.querySelectorAll('option'), child);
       }
 
       start++;
@@ -288,7 +290,7 @@ var HyperHTMLElement = (function (exports) {
   var identity = function identity(O) {
     return O;
   };
-  var indexOf$1 = function indexOf(moreNodes, moreStart, moreEnd, lessNodes, lessStart, lessEnd, compare) {
+  var indexOf = function indexOf(moreNodes, moreStart, moreEnd, lessNodes, lessStart, lessEnd, compare) {
     var length = lessEnd - lessStart;
     /* istanbul ignore if */
 
@@ -602,7 +604,7 @@ var HyperHTMLElement = (function (exports) {
     var i = -1; // 2 simple indels: the shortest sequence is a subsequence of the longest
 
     if (currentChanges < futureChanges) {
-      i = indexOf$1(futureNodes, futureStart, futureEnd, currentNodes, currentStart, currentEnd, compare); // inner diff
+      i = indexOf(futureNodes, futureStart, futureEnd, currentNodes, currentStart, currentEnd, compare); // inner diff
 
       if (-1 < i) {
         append(get, parentNode, futureNodes, futureStart, i, get(currentNodes[currentStart], 0));
@@ -612,14 +614,14 @@ var HyperHTMLElement = (function (exports) {
     }
     /* istanbul ignore else */
     else if (futureChanges < currentChanges) {
-        i = indexOf$1(currentNodes, currentStart, currentEnd, futureNodes, futureStart, futureEnd, compare); // outer diff
+      i = indexOf(currentNodes, currentStart, currentEnd, futureNodes, futureStart, futureEnd, compare); // outer diff
 
-        if (-1 < i) {
-          remove(get, currentNodes, currentStart, i);
-          remove(get, currentNodes, i + futureChanges, currentEnd);
-          return futureNodes;
-        }
-      } // common case with one replacement for many nodes
+      if (-1 < i) {
+        remove(get, currentNodes, currentStart, i);
+        remove(get, currentNodes, i + futureChanges, currentEnd);
+        return futureNodes;
+      }
+    } // common case with one replacement for many nodes
     // or many nodes replaced for a single one
 
     /* istanbul ignore else */
@@ -649,8 +651,8 @@ var HyperHTMLElement = (function (exports) {
   };
 
   /*! (c) Andrea Giammarchi - ISC */
-  var self$2 = {};
-  self$2.CustomEvent = typeof CustomEvent === 'function' ? CustomEvent : function (__p__) {
+  var self$1 = {};
+  self$1.CustomEvent = typeof CustomEvent === 'function' ? CustomEvent : function (__p__) {
     CustomEvent[__p__] = new CustomEvent('').constructor[__p__];
     return CustomEvent;
 
@@ -661,15 +663,15 @@ var HyperHTMLElement = (function (exports) {
       return e;
     }
   }('prototype');
-  var CustomEvent$1 = self$2.CustomEvent;
+  var CustomEvent$1 = self$1.CustomEvent;
 
   /*! (c) Andrea Giammarchi - ISC */
-  var self$3 = {};
+  var self = {};
 
   try {
-    self$3.Map = Map;
+    self.Map = Map;
   } catch (Map) {
-    self$3.Map = function Map() {
+    self.Map = function Map() {
       var i = 0;
       var k = [];
       var v = [];
@@ -708,7 +710,7 @@ var HyperHTMLElement = (function (exports) {
     };
   }
 
-  var Map$1 = self$3.Map;
+  var Map$1 = self.Map;
 
   // able to create Custom Elements like components
   // including the ability to listen to connect/disconnect
@@ -913,9 +915,7 @@ var HyperHTMLElement = (function (exports) {
     }
   };
 
-  var isArray = Array.isArray ||
-  /* istanbul ignore next */
-  function (toString) {
+  var isArray = Array.isArray || function (toString) {
     /* istanbul ignore next */
     var $ = toString.call([]);
     /* istanbul ignore next */
@@ -1096,9 +1096,7 @@ var HyperHTMLElement = (function (exports) {
       }
 
       return clone;
-    } :
-    /* istanbul ignore next */
-    _native ? document[importNode] : function (node, deep) {
+    } : _native ? document[importNode] : function (node, deep) {
       return node[cloneNode](!!deep);
     };
   }(document, 'appendChild', 'cloneNode', 'createTextNode', 'importNode');
@@ -1737,77 +1735,77 @@ var HyperHTMLElement = (function (exports) {
 
       if (name === 'style') return hyperStyle(node, original, isSVG); // direct accessors for <input .value=${...}> and friends
       else if (name.slice(0, 1) === '.') return hyperSetter(node, name.slice(1), isSVG); // boolean accessors for <input .value=${...}> and friends
-        else if (name.slice(0, 1) === '?') return booleanSetter(node, name.slice(1)); // the name is an event one,
-          // add/remove event listeners accordingly
-          else if (/^on/.test(name)) {
-              var type = name.slice(2);
+      else if (name.slice(0, 1) === '?') return booleanSetter(node, name.slice(1)); // the name is an event one,
+      // add/remove event listeners accordingly
+      else if (/^on/.test(name)) {
+        var type = name.slice(2);
 
-              if (type === CONNECTED || type === DISCONNECTED) {
-                observe(node);
-              } else if (name.toLowerCase() in node) {
-                type = type.toLowerCase();
+        if (type === CONNECTED || type === DISCONNECTED) {
+          observe(node);
+        } else if (name.toLowerCase() in node) {
+          type = type.toLowerCase();
+        }
+
+        return function (newValue) {
+          if (oldValue !== newValue) {
+            if (oldValue) node.removeEventListener(type, oldValue, false);
+            oldValue = newValue;
+            if (newValue) node.addEventListener(type, newValue, false);
+          }
+        };
+      } // the attribute is special ('value' in input)
+      // and it's not SVG *or* the name is exactly data,
+      // in this case assign the value directly
+      else if (name === 'data' || !isSVG && name in node && !readOnly.test(name)) {
+        return function (newValue) {
+          if (oldValue !== newValue) {
+            oldValue = newValue;
+
+            if (node[name] !== newValue && newValue == null) {
+              // cleanup on null to avoid silly IE/Edge bug
+              node[name] = '';
+              node.removeAttribute(name);
+            } else node[name] = newValue;
+          }
+        };
+      } else if (name in Intent.attributes) {
+        return function (any) {
+          var newValue = Intent.attributes[name](node, any);
+
+          if (oldValue !== newValue) {
+            oldValue = newValue;
+            if (newValue == null) node.removeAttribute(name);else node.setAttribute(name, newValue);
+          }
+        };
+      } // in every other case, use the attribute node as it is
+      // update only the value, set it as node only when/if needed
+      else {
+        var owner = false;
+        var attribute = original.cloneNode(true);
+        return function (newValue) {
+          if (oldValue !== newValue) {
+            oldValue = newValue;
+
+            if (attribute.value !== newValue) {
+              if (newValue == null) {
+                if (owner) {
+                  owner = false;
+                  node.removeAttributeNode(attribute);
+                }
+
+                attribute.value = newValue;
+              } else {
+                attribute.value = newValue;
+
+                if (!owner) {
+                  owner = true;
+                  node.setAttributeNode(attribute);
+                }
               }
-
-              return function (newValue) {
-                if (oldValue !== newValue) {
-                  if (oldValue) node.removeEventListener(type, oldValue, false);
-                  oldValue = newValue;
-                  if (newValue) node.addEventListener(type, newValue, false);
-                }
-              };
-            } // the attribute is special ('value' in input)
-            // and it's not SVG *or* the name is exactly data,
-            // in this case assign the value directly
-            else if (name === 'data' || !isSVG && name in node && !readOnly.test(name)) {
-                return function (newValue) {
-                  if (oldValue !== newValue) {
-                    oldValue = newValue;
-
-                    if (node[name] !== newValue && newValue == null) {
-                      // cleanup on null to avoid silly IE/Edge bug
-                      node[name] = '';
-                      node.removeAttribute(name);
-                    } else node[name] = newValue;
-                  }
-                };
-              } else if (name in Intent.attributes) {
-                return function (any) {
-                  var newValue = Intent.attributes[name](node, any);
-
-                  if (oldValue !== newValue) {
-                    oldValue = newValue;
-                    if (newValue == null) node.removeAttribute(name);else node.setAttribute(name, newValue);
-                  }
-                };
-              } // in every other case, use the attribute node as it is
-              // update only the value, set it as node only when/if needed
-              else {
-                  var owner = false;
-                  var attribute = original.cloneNode(true);
-                  return function (newValue) {
-                    if (oldValue !== newValue) {
-                      oldValue = newValue;
-
-                      if (attribute.value !== newValue) {
-                        if (newValue == null) {
-                          if (owner) {
-                            owner = false;
-                            node.removeAttributeNode(attribute);
-                          }
-
-                          attribute.value = newValue;
-                        } else {
-                          attribute.value = newValue;
-
-                          if (!owner) {
-                            owner = true;
-                            node.setAttributeNode(attribute);
-                          }
-                        }
-                      }
-                    }
-                  };
-                }
+            }
+          }
+        };
+      }
     },
     // in a hyper(node)`<div>${content}</div>` case
     // everything could happen:
@@ -1988,17 +1986,17 @@ var HyperHTMLElement = (function (exports) {
       // this way performance is still optimal,
       // penalized only when there are GC issues
       else {
-          var wm = new WeakMap$1();
+        var wm = new WeakMap$1();
 
-          var set = function set(tl, unique) {
-            wm.set(tl, unique);
-            return unique;
-          };
+        var set = function set(tl, unique) {
+          wm.set(tl, unique);
+          return unique;
+        };
 
-          _templateLiteral = function templateLiteral(tl) {
-            return wm.get(tl) || set(tl, foreverCache(tl));
-          };
-        }
+        _templateLiteral = function templateLiteral(tl) {
+          return wm.get(tl) || set(tl, foreverCache(tl));
+        };
+      }
     } else {
       isNoOp = true;
     }
@@ -2229,39 +2227,14 @@ var HyperHTMLElement = (function (exports) {
 
     _createClass(HyperHTMLElement, [{
       key: "attachShadow",
-      // weakly relate the shadowRoot for refs usage
-      value: function attachShadow() {
+      value: // weakly relate the shadowRoot for refs usage
+      function attachShadow() {
         var shadowRoot = _attachShadow.apply(this, arguments);
 
         sr.set(this, shadowRoot);
         return shadowRoot;
       } // returns elements by ref
 
-    }, {
-      key: "render",
-      // overwrite this method with your own render
-      value: function render() {} // ---------------------//
-      // Basic State Handling //
-      // ---------------------//
-      // define the default state object
-      // you could use observed properties too
-
-    }, {
-      key: "setState",
-      // currently a state is a shallow copy, like in Preact or other libraries.
-      // after the state is updated, the render() method will be invoked.
-      // ⚠️ do not ever call this.setState() inside this.render()
-      value: function setState(state, render) {
-        var target = this.state;
-        var source = typeof state === 'function' ? state.call(this, target) : state;
-
-        for (var key in source) {
-          target[key] = source[key];
-        }
-
-        if (render !== false) this.render();
-        return this;
-      }
     }, {
       key: "refs",
       get: function get() {
@@ -2300,7 +2273,16 @@ var HyperHTMLElement = (function (exports) {
           configurable: true,
           value: value
         });
-      }
+      } // overwrite this method with your own render
+
+    }, {
+      key: "render",
+      value: function render() {} // ---------------------//
+      // Basic State Handling //
+      // ---------------------//
+      // define the default state object
+      // you could use observed properties too
+
     }, {
       key: "defaultState",
       get: function get() {
@@ -2318,13 +2300,29 @@ var HyperHTMLElement = (function (exports) {
           configurable: true,
           value: value
         });
+      } // currently a state is a shallow copy, like in Preact or other libraries.
+      // after the state is updated, the render() method will be invoked.
+      // ⚠️ do not ever call this.setState() inside this.render()
+
+    }, {
+      key: "setState",
+      value: function setState(state, render) {
+        var target = this.state;
+        var source = typeof state === 'function' ? state.call(this, target) : state;
+
+        for (var key in source) {
+          target[key] = source[key];
+        }
+
+        if (render !== false) this.render();
+        return this;
       }
     }], [{
       key: "define",
-      // define a custom-element in the CustomElementsRegistry
+      value: // define a custom-element in the CustomElementsRegistry
       // class MyEl extends HyperHTMLElement {}
       // MyEl.define('my-el');
-      value: function define(name, options) {
+      function define(name, options) {
         var Class = this;
         var proto = Class.prototype;
         var onChanged = proto[ATTRIBUTE_CHANGED_CALLBACK];
@@ -2610,7 +2608,7 @@ var HyperHTMLElement = (function (exports) {
     return false;
   }
 
-  exports.default = HyperHTMLElement;
+  exports['default'] = HyperHTMLElement;
 
   Object.defineProperty(exports, '__esModule', { value: true });
 

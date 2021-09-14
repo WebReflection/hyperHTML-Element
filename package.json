@@ -11,8 +11,8 @@
     "build": "npm-dollar build",
     "bundle": "npm-dollar bundle",
     "min": "npm-dollar min",
-    "coveralls": "nyc report --reporter=text-lcov | coveralls",
-    "test": "npm-dollar test.default"
+    "test": "npm-dollar test.default",
+    "coverage": "mkdir -p ./coverage; nyc report --reporter=text-lcov > ./coverage/lcov.info"
   },
   "$": {
     "build": [
@@ -52,7 +52,7 @@
     "size": {
       "esm": [
         [
-          "echo $(tput bold)'Size for ES2015'$(tput sgr0); cat index.js |",
+          "echo -e '\\x1b[1mSize for ES2015\\x1b[0m'; cat index.js |",
           "wc -c;cat min.js |",
           "wc -c;gzip -c min.js |",
           "wc -c"
@@ -60,7 +60,7 @@
       ],
       "es5": [
         [
-          "echo $(tput bold)'Size for ES5'$(tput sgr0); cat es5.js |",
+          "echo -e '\\x1b[1mSize for ES5\\x1b[0m'; cat es5.js |",
           "wc -c;cat es5.min.js |",
           "wc -c;gzip -c es5.min.js |",
           "wc -c"
@@ -96,15 +96,14 @@
     ]
   },
   "devDependencies": {
-    "@babel/cli": "^7.8.4",
-    "@babel/core": "^7.9.0",
-    "@babel/preset-env": "^7.9.0",
-    "ascjs": "^3.1.2",
-    "coveralls": "^3.0.11",
-    "linkedom": "^0.4.24",
+    "@babel/cli": "^7.15.4",
+    "@babel/core": "^7.15.5",
+    "@babel/preset-env": "^7.15.6",
+    "ascjs": "^5.0.1",
+    "linkedom": "^0.11.2",
     "npm-dollar": "^2.2.1",
-    "nyc": "^15.0.0",
-    "rollup": "^2.1.0",
+    "nyc": "^15.1.0",
+    "rollup": "^2.56.3",
     "rollup-plugin-babel": "^4.4.0",
     "rollup-plugin-node-resolve": "^5.2.0",
     "tressa": "^0.3.1",
