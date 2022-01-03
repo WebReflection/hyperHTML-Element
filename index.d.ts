@@ -78,7 +78,7 @@ declare class HyperHTMLElement<T = {}> {
    handleEvent(ev: Event): void;
    html: WiredTemplateFunction;
    state: T;
-   readonly defaultState: T;
+   get defaultState(): T;
    render(): void;
    setState(state: Partial<T> | ((this: this, state: T) => Partial<T>)): void;
    static bind: typeof bind;
